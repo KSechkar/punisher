@@ -532,12 +532,12 @@ class CellModelAuxiliary:
             tspan = (ts[0], ts[-1])
 
         # get cell variables' values over time
-        e, l, F_r, nu, _, T, D, D_nohet = self.get_e_l_Fr_nu_psi_T_D_Dnohet(ts, xs, par, circuit_genes, circuit_miscs,
+        e, l, F_r, nu, _, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xs, par, circuit_genes, circuit_miscs,
                                                                             circuit_name2pos)
 
         # Create a ColumnDataSource object for the plot
         data_for_column = {'t': np.array(ts), 'e': np.array(e), 'l': np.array(l), 'F_r': np.array(F_r),
-                           'ppGpp': np.array(1 / T), 'nu': np.array(nu), 'D': np.array(D), 'D_nohet': np.array(D_nohet)}
+                           'ppGpp': np.array(1 / T), 'nu': np.array(nu), 'D': np.array(D), 'D_nodeg': np.array(D_nodeg)}
         source = bkmodels.ColumnDataSource(data=data_for_column)
 
         # PLOT GROWTH RATE
@@ -624,13 +624,14 @@ class CellModelAuxiliary:
             tools="box_zoom,pan,hover,reset"
         )
         D_figure.line(x='t', y='D', source=source, line_width=1.5, line_color='blue', legend_label='D')
+        D_figure.line(x='t', y='D_nodeg', source=source, line_width=1.5, line_color='red', legend_label='D (no deg.)')
         D_figure.legend.label_text_font_size = "8pt"
         D_figure.legend.location = "top_right"
 
         return l_figure, e_figure, Fr_figure, ppGpp_figure, nu_figure, D_figure
 
     # find values of different cellular variables
-    def get_e_l_Fr_nu_psi_T_D_Dnohet(self, t, x,
+    def get_e_l_Fr_nu_psi_T_D_Dnodeg(self, t, x,
                                      par, circuit_genes, circuit_miscs, circuit_name2pos):
         # give the state vector entries meaningful names
         m_a = x[:, 0]  # metabolic gene mRNA
@@ -648,26 +649,39 @@ class CellModelAuxiliary:
         sgp4j = self.synth_gene_params_for_jax(par, circuit_genes)
         kplus_het, kminus_het, n_het, d_het = sgp4j
 
+        # FIND SPECIAL SYNTHETIC PROTEIN CONCENTRATIONS - IF PRESENT
+        # chloramphenicol acetyltransferase (antibiotic reistance)
+        p_cat = jax.lax.select(par['cat_gene_present'] == 1, x[:,circuit_name2pos['p_cat']], jnp.zeros_like(x[:,0]))
+        # synthetic protease (synthetic protein degradation)
+        p_prot = jax.lax.select(par['prot_gene_present'] == 1, x[:,circuit_name2pos['p_prot']], jnp.zeros_like(x[:,0]))
+
         # CALCULATE PHYSIOLOGICAL VARIABLES
         # translation elongation rate
         e = e_calc(par, tc)
 
         # ribosome dissociation constants
-        k_a = k_calc(e, par['k+_a'], par['k-_a'], par['n_a'])  # metabolic genes
-        k_r = k_calc(e, par['k+_r'], par['k-_r'], par['n_r'])  # ribosomal genes
+        k_a = k_calc(e, par['k+_a'], par['k-_a'], par['n_a'])
+        k_r = k_calc(e, par['k+_r'], par['k-_r'], par['n_r'])
         k_het = k_calc((jnp.atleast_2d(jnp.array(e) * jnp.ones((len(circuit_genes), 1)))).T,
                        jnp.atleast_2d(kplus_het) * jnp.ones((len(e), 1)),
                        jnp.atleast_2d(kminus_het) * jnp.ones((len(e), 1)),
                        jnp.atleast_2d(n_het) * jnp.ones((len(e), 1)))  # heterologous genes
 
-        T = tc / tu  # ratio of charged to uncharged tRNAs
+        # ratio of charged to uncharged tRNAs
+        T = tc / tu
 
-        H = (par['K_D'] + h) / par['K_D']  # corection to ribosome availability due to chloramphenicol action
+        # corection to ribosome availability due to chloramphenicol action
+        H = (par['K_D'] + h) / par['K_D']
 
+        # heterologous mRNA levels scaled by RBS strength
         m_het_div_k_het = jnp.sum(x[:, 8:8 + len(circuit_genes)] / k_het, axis=1)  # heterologous protein synthesis flux
-        prodeflux = jnp.sum(
-            d_het * n_het * x[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2],
-            axis=1)  # heterologous protein degradation flux
+
+        # heterologous protein degradation flux
+        prodeflux = jnp.multiply(
+            p_prot,
+            jnp.sum(d_het * n_het * x[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2],axis=1)
+        )
+        # heterologous protein degradation flux
         prodeflux_times_H_div_eR = prodeflux * H / (e * R)
 
         # resource competition denominator
@@ -686,10 +700,9 @@ class CellModelAuxiliary:
 
         F_r = Fr_calc(par, T)  # ribosomal gene transcription regulation function
 
-        # RC denominator, as it would be without heterologous genes
-        Q_nohet = 1 / (1 - par['phi_q'])
-        D_nohet = ((par['K_D'] + h) / par['K_D']) * (1 + Q_nohet * (m_a / k_a + m_r / k_r))
-        return e, l, F_r, nu, jnp.multiply(psi, l), T, D, D_nohet
+        # RC denominator, as it would be without active protein degradation by the protease
+        D_nodeg = H * (1 + (1/(1-par['phi_q'])) * m_notq_div_k_notq)
+        return e, l, F_r, nu, jnp.multiply(psi, l), T, D, D_nodeg
 
     # PLOT RESULTS FOR SEVERAL TRAJECTORIES AT ONCE (SAME TIME AXIS)
     # plot mRNA, protein and tRNA concentrations over time
@@ -1057,7 +1070,7 @@ class CellModelAuxiliary:
         # get cell variables' values over time and create ColumnDataSource objects for the plot
         sources = {}
         for i in range(0,len(xss)):
-            e, l, F_r, nu, psi, T, D, D_nohet = self.get_e_l_Fr_nu_psi_T_D_Dnohet(ts, xss[i, :, :],
+            e, l, F_r, nu, psi, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xss[i, :, :],
                                                                                     par, circuit_genes, circuit_miscs, circuit_name2pos)
             # Create a ColumnDataSource object for the plot
             sources[i] = bkmodels.ColumnDataSource(data={
@@ -1069,7 +1082,7 @@ class CellModelAuxiliary:
                 'psi': np.array(psi),
                 '1/T': np.array(1/T),
                 'D': np.array(D),
-                'D_nohet': np.array(D_nohet)
+                'D_nodeg': np.array(D_nodeg)
             })
 
         # Create a ColumnDataSource object for plotting the average trajectory
@@ -1081,7 +1094,7 @@ class CellModelAuxiliary:
                            'psi': np.zeros_like(ts),
                            '1/T': np.zeros_like(ts),
                            'D': np.zeros_like(ts),
-                           'D_nohet': np.zeros_like(ts)}
+                           'D_nodeg': np.zeros_like(ts)}
         # add physiological variables for different trajectories together
         for i in range(0, len(xss)):
             data_for_column['e'] += np.array(sources[i].data['e'])
@@ -1091,7 +1104,7 @@ class CellModelAuxiliary:
             data_for_column['psi'] += np.array(sources[i].data['psi'])
             data_for_column['1/T'] += np.array(sources[i].data['1/T'])
             data_for_column['D'] += np.array(sources[i].data['D'])
-            data_for_column['D_nohet'] += np.array(sources[i].data['D_nohet'])
+            data_for_column['D_nodeg'] += np.array(sources[i].data['D_nodeg'])
         # divide by the number of trajectories to get the average
         data_for_column['e'] /= len(xss)
         data_for_column['l'] /= len(xss)
@@ -1100,7 +1113,7 @@ class CellModelAuxiliary:
         data_for_column['psi'] /= len(xss)
         data_for_column['1/T'] /= len(xss)
         data_for_column['D'] /= len(xss)
-        data_for_column['D_nohet'] /= len(xss)
+        data_for_column['D_nodeg'] /= len(xss)
         source_avg = bkmodels.ColumnDataSource(data=data_for_column)
 
         # PLOT GROWTH RATE
@@ -1209,10 +1222,10 @@ class CellModelAuxiliary:
         # plot simulated trajectories
         for i in range(0, len(xss)):
             D_figure.line(x='t', y='D', source=sources[i], line_width=1.5, line_color='blue', legend_label='D', line_alpha=simtraj_alpha)
-            D_figure.line(x='t', y='D_nohet', source=sources[i], line_width=1.5, line_color='red', legend_label='D_nohet', line_alpha=simtraj_alpha)
+            #D_figure.line(x='t', y='D_nodeg', source=sources[i], line_width=1.5, line_color='red', legend_label='D_nodeg', line_alpha=simtraj_alpha)
         # plot average trajectory
         D_figure.line(x='t', y='D', source=source_avg, line_width=1.5, line_color='blue', legend_label='D')
-        D_figure.line(x='t', y='D_nohet', source=source_avg, line_width=1.5, line_color='red', legend_label='D_nohet')
+        # D_figure.line(x='t', y='D_nodeg', source=source_avg, line_width=1.5, line_color='red', legend_label='D_nodeg')
         # add and format the legend
         D_figure.legend.label_text_font_size = "8pt"
         D_figure.legend.location = 'top_left'

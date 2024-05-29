@@ -19,3 +19,4 @@ import time
 import synthetic_circuits as circuits
 from cell_model import *
 
+# SIMULATE THE SYSTEM FOR 50 H TO GET ITS STEADY STATE [vmappable]------------------------------------------------------
