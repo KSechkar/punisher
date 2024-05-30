@@ -624,7 +624,7 @@ class CellModelAuxiliary:
             tools="box_zoom,pan,hover,reset"
         )
         D_figure.line(x='t', y='D', source=source, line_width=1.5, line_color='blue', legend_label='D')
-        D_figure.line(x='t', y='D_nodeg', source=source, line_width=1.5, line_color='red', legend_label='D (no deg.)')
+        # D_figure.line(x='t', y='D_nodeg', source=source, line_width=1.5, line_color='red', legend_label='D (no deg.)')
         D_figure.legend.label_text_font_size = "8pt"
         D_figure.legend.location = "top_right"
 
