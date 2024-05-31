@@ -337,6 +337,7 @@ class CellModelAuxiliary:
                          legend_label='m_het')  # plot heterologous mRNA concentrations
         mRNA_figure.legend.label_text_font_size = "8pt"
         mRNA_figure.legend.location = "top_right"
+        mRNA_figure.legend.click_policy = 'hide'
 
         # PLOT protein CONCENTRATIONS
         protein_figure = bkplot.figure(
@@ -356,6 +357,7 @@ class CellModelAuxiliary:
                             legend_label='p_het')  # plot heterologous protein concentrations
         protein_figure.legend.label_text_font_size = "8pt"
         protein_figure.legend.location = "top_right"
+        protein_figure.legend.click_policy = 'hide'
 
         # PLOT tRNA CONCENTRATIONS
         tRNA_figure = bkplot.figure(
@@ -371,8 +373,9 @@ class CellModelAuxiliary:
                          legend_label='tc')  # plot charged tRNA concentrations
         tRNA_figure.line(x='t', y='tu', source=source, line_width=1.5, line_color=self.tRNA_colours['tu'],
                          legend_label='tu')  # plot uncharged tRNA concentrations
-        protein_figure.legend.label_text_font_size = "8pt"
-        protein_figure.legend.location = "top_right"
+        tRNA_figure.legend.label_text_font_size = "8pt"
+        tRNA_figure.legend.location = "top_right"
+        tRNA_figure.legend.click_policy = 'hide'        
 
         # PLOT INTRACELLULAR CHLORAMPHENICOL CONCENTRATION
         h_figure = bkplot.figure(
@@ -432,6 +435,7 @@ class CellModelAuxiliary:
                                  legend_label='m_' + gene)
             mRNA_figure.legend.label_text_font_size = "8pt"
             mRNA_figure.legend.location = "top_right"
+            mRNA_figure.legend.click_policy = 'hide'
 
             # proteins
             protein_figure = bkplot.figure(
@@ -450,6 +454,7 @@ class CellModelAuxiliary:
                                     legend_label='p_' + gene)
             protein_figure.legend.label_text_font_size = "8pt"
             protein_figure.legend.location = "top_right"
+            protein_figure.legend.click_policy = 'hide'
         else:
             mRNA_figure = None
             protein_figure = None
@@ -471,6 +476,7 @@ class CellModelAuxiliary:
                                  legend_label=misc)
             misc_figure.legend.label_text_font_size = "8pt"
             misc_figure.legend.location = "top_right"
+            misc_figure.legend.click_policy = 'hide'
         else:
             misc_figure = None
 
@@ -519,6 +525,7 @@ class CellModelAuxiliary:
                           legend_label='F_' + gene)
         F_figure.legend.label_text_font_size = "8pt"
         F_figure.legend.location = "top_right"
+        F_figure.legend.click_policy = 'hide'
 
         return F_figure
 
@@ -554,6 +561,7 @@ class CellModelAuxiliary:
         l_figure.line(x='t', y='l', source=source, line_width=1.5, line_color='blue', legend_label='l')
         l_figure.legend.label_text_font_size = "8pt"
         l_figure.legend.location = "top_right"
+        l_figure.legend.click_policy = 'hide'
 
         # PLOT TRANSLATION ELONGATION RATE
         e_figure = bkplot.figure(
@@ -569,6 +577,7 @@ class CellModelAuxiliary:
         e_figure.line(x='t', y='e', source=source, line_width=1.5, line_color='blue', legend_label='e')
         e_figure.legend.label_text_font_size = "8pt"
         e_figure.legend.location = "top_right"
+        e_figure.legend.click_policy = 'hide'
 
         # PLOT RIBOSOMAL GENE TRANSCRIPTION REGULATION FUNCTION
         Fr_figure = bkplot.figure(
@@ -584,6 +593,7 @@ class CellModelAuxiliary:
         Fr_figure.line(x='t', y='F_r', source=source, line_width=1.5, line_color='blue', legend_label='F_r')
         Fr_figure.legend.label_text_font_size = "8pt"
         Fr_figure.legend.location = "top_right"
+        Fr_figure.legend.click_policy = 'hide'
 
         # PLOT ppGpp CONCENTRATION
         ppGpp_figure = bkplot.figure(
@@ -598,6 +608,7 @@ class CellModelAuxiliary:
         ppGpp_figure.line(x='t', y='ppGpp', source=source, line_width=1.5, line_color='blue', legend_label='ppGpp')
         ppGpp_figure.legend.label_text_font_size = "8pt"
         ppGpp_figure.legend.location = "top_right"
+        ppGpp_figure.legend.click_policy = 'hide'
 
         # PLOT tRNA CHARGING RATE
         nu_figure = bkplot.figure(
@@ -612,6 +623,7 @@ class CellModelAuxiliary:
         nu_figure.line(x='t', y='nu', source=source, line_width=1.5, line_color='blue', legend_label='nu')
         nu_figure.legend.label_text_font_size = "8pt"
         nu_figure.legend.location = "top_right"
+        nu_figure.legend.click_policy = 'hide'
 
         # PLOT RC DENOMINATOR
         D_figure = bkplot.figure(
@@ -627,6 +639,7 @@ class CellModelAuxiliary:
         # D_figure.line(x='t', y='D_nodeg', source=source, line_width=1.5, line_color='red', legend_label='D (no deg.)')
         D_figure.legend.label_text_font_size = "8pt"
         D_figure.legend.location = "top_right"
+        D_figure.legend.click_policy = 'hide'
 
         return l_figure, e_figure, Fr_figure, ppGpp_figure, nu_figure, D_figure
 
@@ -775,6 +788,7 @@ class CellModelAuxiliary:
         # add and format the legend
         mRNA_figure.legend.label_text_font_size = "8pt"
         mRNA_figure.legend.location = "top_right"
+        mRNA_figure.legend.click_policy = 'hide'
         
         # PLOT protein CONCENTRATIONS
         protein_figure = bkplot.figure(
@@ -804,6 +818,7 @@ class CellModelAuxiliary:
         # add and format the legend
         protein_figure.legend.label_text_font_size = "8pt"
         protein_figure.legend.location = "top_right"
+        protein_figure.legend.click_policy = 'hide'
         
         # PLOT tRNA CONCENTRATIONS
         tRNA_figure = bkplot.figure(
@@ -829,6 +844,7 @@ class CellModelAuxiliary:
         # add and format the legend
         tRNA_figure.legend.label_text_font_size = "8pt"
         tRNA_figure.legend.location = "top_right"
+        tRNA_figure.legend.click_policy = 'hide'
         
         # PLOT INTRACELLULAR CHLORAMPHENICOL CONCENTRATION
         h_figure = bkplot.figure(
@@ -850,6 +866,7 @@ class CellModelAuxiliary:
         # add and format the legend
         h_figure.legend.label_text_font_size = "8pt"
         h_figure.legend.location = "top_right"
+        h_figure.legend.click_policy = 'hide'
         
         return mRNA_figure, protein_figure, tRNA_figure, h_figure
 
@@ -920,6 +937,7 @@ class CellModelAuxiliary:
             # add and format the legend
             mRNA_figure.legend.label_text_font_size = "8pt"
             mRNA_figure.legend.location = 'top_left'
+            mRNA_figure.legend.click_policy = 'hide'
 
             # proteins
             protein_figure = bkplot.figure(
@@ -947,6 +965,7 @@ class CellModelAuxiliary:
             # add and format the legend
             protein_figure.legend.label_text_font_size = "8pt"
             protein_figure.legend.location = 'top_left'
+            protein_figure.legend.click_policy = 'hide'
         else:
             mRNA_figure = None
             protein_figure = None
@@ -976,6 +995,7 @@ class CellModelAuxiliary:
             # add and format the legend
             misc_figure.legend.label_text_font_size = "8pt"
             misc_figure.legend.location = 'top_left'
+            misc_figure.legend.click_policy = 'hide'
         else:
             misc_figure = None
 
@@ -1050,6 +1070,7 @@ class CellModelAuxiliary:
         # add and format the legend
         F_figure.legend.label_text_font_size = "8pt"
         F_figure.legend.location = 'top_left'
+        F_figure.legend.click_policy = 'hide'
 
         return F_figure
 
@@ -1134,6 +1155,7 @@ class CellModelAuxiliary:
         # add and format the legend
         l_figure.legend.label_text_font_size = "8pt"
         l_figure.legend.location = 'top_left'
+        l_figure.legend.click_policy = 'hide'
 
         # PLOT TRANSLATION ELONGATION RATE
         e_figure = bkplot.figure(
@@ -1153,6 +1175,7 @@ class CellModelAuxiliary:
         # add and format the legend
         e_figure.legend.label_text_font_size = "8pt"
         e_figure.legend.location = 'top_left'
+        e_figure.legend.click_policy = 'hide'
 
         # PLOT RIBOSOMAL GENE TRANSCRIPTION REGULATION FUNCTION
         F_r_figure = bkplot.figure(
@@ -1173,9 +1196,10 @@ class CellModelAuxiliary:
         # add and format the legend
         F_r_figure.legend.label_text_font_size = "8pt"
         F_r_figure.legend.location = 'top_left'
+        F_r_figure.legend.click_policy = 'hide'
 
         # PLOT ppGpp CONCENTRATION
-        pppGpp_figure = bkplot.figure(
+        ppGpp_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
             x_axis_label="t, hours",
@@ -1186,12 +1210,13 @@ class CellModelAuxiliary:
         )
         # plot simulated trajectories
         for i in range(0, len(xss)):
-            pppGpp_figure.line(x='t', y='1/T', source=sources[i], line_width=1.5, line_color='blue', legend_label='1/T', line_alpha=simtraj_alpha)
+            ppGpp_figure.line(x='t', y='1/T', source=sources[i], line_width=1.5, line_color='blue', legend_label='1/T', line_alpha=simtraj_alpha)
         # plot average trajectory
-        pppGpp_figure.line(x='t', y='1/T', source=source_avg, line_width=1.5, line_color='blue', legend_label='1/T')
+        ppGpp_figure.line(x='t', y='1/T', source=source_avg, line_width=1.5, line_color='blue', legend_label='1/T')
         # add and format the legend
-        pppGpp_figure.legend.label_text_font_size = "8pt"
-        pppGpp_figure.legend.location = 'top_left'
+        ppGpp_figure.legend.label_text_font_size = "8pt"
+        ppGpp_figure.legend.location = 'top_left'
+        ppGpp_figure.legend.click_policy = 'hide'
 
         # PLOT tRNA CHARGING RATE
         nu_figure = bkplot.figure(
@@ -1229,8 +1254,9 @@ class CellModelAuxiliary:
         # add and format the legend
         D_figure.legend.label_text_font_size = "8pt"
         D_figure.legend.location = 'top_left'
+        D_figure.legend.click_policy = 'hide'
 
-        return l_figure, e_figure, F_r_figure, pppGpp_figure, nu_figure, D_figure
+        return l_figure, e_figure, F_r_figure, ppGpp_figure, nu_figure, D_figure
 
 
 # DETERMINISTIC SIMULATION ---------------------------------------------------------------------------------------------

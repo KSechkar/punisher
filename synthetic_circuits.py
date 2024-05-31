@@ -540,9 +540,8 @@ def punisher_xtra_initialise():
     # punisher
     default_par['c_switch'] = 1  # gene concentration (nM)
     default_par['a_switch'] = 150  # promoter strength (unitless)
-    default_par['c_int'] = 1  # gene concentration (nM)
-    default_par['a_int'] = 1000  # promoter strength (unitless)
-    default_par['d_int'] = 6  # integrase protein degradation rate (to avoid unnecessary punishment)
+    default_par['c_int'] = 0  # integrase expressed from the same operon as the switch protein
+    default_par['a_int'] = 0 # integrase expressed from the same operon as the switch protein
     default_par['c_cat'] = 1  # gene concentration (nM)
     default_par['a_cat'] = 5000  # promoter strength (unitless)
 
@@ -594,7 +593,7 @@ def punisher_xtra_F_calc(t ,x, par, name2pos):
     # switch and integrase genes regulated by p_switch
     p_switch_dependent_term = (x[name2pos['p_switch']]*par['p_switch_ac_frac']/par['K_switch'])**par['eta_switch']
     F_switch = par['baseline_switch'] + (1 - par['baseline_switch']) * (p_switch_dependent_term/(p_switch_dependent_term+1))
-    F_int = F_switch    # integrase co-regulated with the switch gene
+    F_int = 0    # integrase expressed from the same operon as the switch protein, not its own gene
     F_prot = 1 # constitutive gene
     return jnp.array([F_xtra,
             F_switch,
@@ -618,17 +617,21 @@ def punisher_xtra_ode(F_calc,     # calculating the transcription regulation fun
     # get the Hill equation for integrase-cat DNA binding
     int_cat_hill = (x[name2pos['p_int']]/par['K_bI~'])**4/(1+(x[name2pos['p_int']]/par['K_bI~'])**4)
 
+    # get the concentration of the integrase mRNA,scaled to account for translation by multiple ribosomes
+    # same operon as the switch gene, but possibly not the same length in codons => rescaling m_switch
+    m_int = x[name2pos['m_switch']]*par['n_int']/par['n_switch']
+
     # RETURN THE ODE
     return [# mRNAs
             par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] - (par['b_switch'] + l) * x[name2pos['m_switch']],
-            par['func_int'] * l * F[name2pos['F_int']] * par['c_int'] * par['a_int'] - (par['b_int'] + l) * x[name2pos['m_int']],
+            0, # integrase expressed from the same operon as the switch protein, not its own gene
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],  # NOTE: GENE COPY NO. GIVEN BY CMR_PB!
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] - (par['b_prot'] + l) * x[name2pos['m_prot']],
             # proteins
             (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']],
             (e / par['n_switch']) * (x[name2pos['m_switch']] / k_het[name2pos['k_switch']] / D) * R - (l + par['d_switch']*p_prot) * x[name2pos['p_switch']],
-            (e / par['n_int']) * (x[name2pos['m_int']] / k_het[name2pos['k_int']] / D) * R - (l + par['d_int']*p_prot) * x[name2pos['p_int']],
+            (e / par['n_int']) * (m_int / k_het[name2pos['k_int']] / D) * R - (l + par['d_int']*p_prot) * x[name2pos['p_int']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
             (e / par['n_prot']) * (x[name2pos['m_prot']] / k_het[name2pos['k_prot']] / D) * R - (l + par['d_prot']*p_prot) * x[name2pos['p_prot']],
             # cat gene state with regard to the integrase
@@ -656,6 +659,10 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
     # get the Hill equation for integrase-cat DNA binding
     int_cat_hill = (x[name2pos['p_int']]/par['K_bI~'])**4/(1+(x[name2pos['p_int']]/par['K_bI~'])**4)
 
+    # get the concentration of the integrase mRNA,scaled to account for translation by multiple ribosomes
+    # same operon as the switch gene, but possibly not the same length in codons => rescaling m_switch
+    m_int = x[name2pos['m_switch']] / mRNA_count_scales[name2pos['mscale_switch']] * mRNA_count_scales[name2pos['mscale_int']]
+
     # RETURN THE PROPENSITIES
     return [
             # synthesis, degradation, dilution of xtra gene mRNA
@@ -667,9 +674,9 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
             par['b_switch'] * x[name2pos['m_switch']] / mRNA_count_scales[name2pos['mscale_switch']],
             l * x[name2pos['m_switch']] / mRNA_count_scales[name2pos['mscale_switch']],
             # synthesis, degradation, dilution of integrase gene mRNA
-            par['func_int'] * l * F[name2pos['F_int']] * par['c_int'] * par['a_int'] / mRNA_count_scales[name2pos['mscale_int']],
-            par['b_int'] * x[name2pos['m_int']] / mRNA_count_scales[name2pos['mscale_int']],
-            l * x[name2pos['m_int']] / mRNA_count_scales[name2pos['mscale_int']],
+            0,  # integrase expressed from the same operon as the switch protein, not its own gene
+            0,  # integrase expressed from the same operon as the switch protein, not its own gene
+            0,  # integrase expressed from the same operon as the switch protein, not its own gene
             # synthesis, degradation, dilution of cat gene mRNA
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
             par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
@@ -688,7 +695,7 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
             par['d_switch']*p_prot * x[name2pos['p_switch']],
             l * x[name2pos['p_switch']],
             # synthesis, degradation, dilution of integrase gene protein
-            (e / par['n_int']) * (x[name2pos['m_int']] / k_het[name2pos['k_int']] / D) * R,
+            (e / par['n_int']) * (m_int / k_het[name2pos['k_int']] / D) * R,
             par['d_int']*p_prot * x[name2pos['p_int']],
             l * x[name2pos['p_int']],
             # synthesis, degradation, dilution of cat gene protein
