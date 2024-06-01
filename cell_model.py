@@ -1917,13 +1917,15 @@ def tauleap_check_switch(circuit_v,  # calculating the propensity vector for sto
     # run tau-leap integration until the next state is to be saved
     next_state_bytauleap = jax.lax.fori_loop(0,sim_state_record['check_every_n_steps'], tauleap_next_x, sim_state_record)
 
-    # check if the switching condition is met, record switching time if yes
+    # check if the switching condition is met, record switching time if yes and not already switched
     switched=switch_condition(sim_state_record['x'],next_state_bytauleap['x'])
-    next_state_bytauleap['switch_time_index']=jax.lax.select(switched, i+1, sim_state_record['switch_time_index'])
+    next_state_bytauleap['switch_time_index']=jax.lax.select(jnp.logical_and(switched,sim_state_record['switch_time_index']==0),
+                                                             i+1, sim_state_record['switch_time_index'])
 
     # check the additional switching condition
     switched1=switch_condition1(sim_state_record['x'],next_state_bytauleap['x'])
-    next_state_bytauleap['switch_time_index1']=jax.lax.select(switched1, i+1, sim_state_record['switch_time_index1'])
+    next_state_bytauleap['switch_time_index1']=jax.lax.select(jnp.logical_and(switched1,sim_state_record['switch_time_index1']==0),
+                                                              i+1, sim_state_record['switch_time_index1'])
 
     # update the overall simulator state
     next_sim_state_record = {
