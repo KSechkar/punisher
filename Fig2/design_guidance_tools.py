@@ -213,3 +213,40 @@ def threshold_gfchanges(par, cellvars):
     gfchange_intact = intact_nonsaddle/intact_saddle
 
     return jnp.array([p_switch_threshold, xi_threshold, gfchange_int, gfchange_F, gfchange_intact])
+
+
+# FIND THE PUNISHER'S BOUNDARY BETWEEN THE STABLE EQUILIBRIA'S BASIONS OF ATTRACTION -----------------------------------
+# assuming burden is above the switching threshold
+def find_basin_border(par, cellvars):
+
+    # greatest possible p_switch level - for zero extra burden so that it's max across all conditions
+    p_switch_upper_bound = jnp.ceil(cellvars['xi_switch_max'] * (1 / (1 + cellvars['P_switch'])) / (
+            cellvars['xi_switch_max'] + cellvars['xi_int_max'] + cellvars['xi_prot'] + cellvars['xi_cat'] + cellvars[
+        'xi_a'] + cellvars['xi_r']
+    ) * par['M'] * (1 - par['phi_q']) / par['n_switch'])  # upper bound for p_switch (to get the high equilibrium)
+
+    # total burden
+    xi_total = cellvars['xi_prot'] + cellvars['xi_cat'] + cellvars['xi_a'] + cellvars['xi_r'] + cellvars[
+        'xi_other_genes']
+
+    # PIN DOWN THE EQUILBIRA TO THE NEAREST INTEGER --------------------------------------------------------------------
+    # get the axis of integer p_switch values
+    p_switch_integers = jnp.arange(0, p_switch_upper_bound + 0.5, 1)
+
+    # find the squared differences between the required and real F values
+    sqdiffs = (F_real_calc(p_switch_integers, par) - F_req_calc(p_switch_integers, xi_total, par, cellvars)) ** 2
+    previous_sqdiff_geq = jnp.concatenate((jnp.array([False]), sqdiffs[:-1] >= sqdiffs[1:]))
+    next_sqdiff_geq = jnp.concatenate((sqdiffs[:-1] <= sqdiffs[1:], jnp.array([False])))
+
+    equilibria = p_switch_integers[jnp.logical_and(previous_sqdiff_geq, next_sqdiff_geq)]
+    unstable_eq_integer = equilibria[1]
+
+    # LOOK FOR THE BOUNDARY (UNSTABLE EQUILIBRIUM) IN THE VICINITY OF THE INTEGER VALUE --------------------------------
+    diff = lambda p_switch: F_real_calc(p_switch, par) - F_req_calc(p_switch, xi_total, par, cellvars) # IMPORTANT: NOT A SQUARE TO HAVE DIFFERENT SIGNS EITHER SIDE OF THE UNSTABLE EQUILIBRIUM
+    unsteq_problem = jaxopt.Bisection(optimality_fun=diff,
+                     lower=float(unstable_eq_integer)-2, upper=float(unstable_eq_integer)+2,
+                     maxiter=10000, tol=1e-18,
+                     check_bracket=False)
+    border = unsteq_problem.run().params
+
+    return border
