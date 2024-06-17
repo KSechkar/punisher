@@ -51,8 +51,8 @@ class PopulationSimulator:
         else:
             self.mutation_rates=[
                 0.1,    # burden
-                0.1,    # switch
-                0.1,    # integrase
+                0.1,    # switch/integrase
+                0.1,    # protease
                 0.1]    # CAT
 
         # switch state transition rates (1/h units)
@@ -85,8 +85,8 @@ class PopulationSimulator:
             for func in self.cs2p.keys():
                 self.growth_rates[func] = {}
                 for state in self.cs2p[func].keys():
-                    self.growth_rates[func][state] = growth_rates[self.func2string[func]]
-                    self.grv[self.cs2p[func][state]] = growth_rates[self.func2string[func]]
+                    self.growth_rates[func][state] = growth_rates[self.func2string[func]][state]
+                    self.grv[self.cs2p[func][state]] = growth_rates[self.func2string[func]][state]
         else:
             for func in self.cs2p.keys():
                 self.growth_rates[func] = {}
@@ -99,7 +99,7 @@ class PopulationSimulator:
         if(p_xtras!=None):
             for func in self.cs2p.keys():
                 for state in self.cs2p[func].keys():
-                    self.pxv[self.cs2p[func][state]] = p_xtras[self.func2string[func]]
+                    self.pxv[self.cs2p[func][state]] = p_xtras[self.func2string[func]][state]
         else:
             for func in self.cs2p.keys():
                 for state in self.cs2p[func].keys():
@@ -245,17 +245,15 @@ class PopulationSimulator:
 
         # fill the matrix
         for func in self.cs2p.keys():
-            if(func[2]==0):
-                continue    # if no integrase gene, no integrase action
             for state in self.cs2p[func].keys():
                 # a cell with cut-out CAT arises due top the integrase
                 func_to=func[0:3]+(0,) # integrase cuts out the CAT gene
                 irm[self.cs2p[func_to][state],self.cs2p[func][state]] += \
-                    self.integrase_activities[self.func2string[func][0]][state]
+                    self.integrase_activities[self.func2string[func]][state]
 
                 # but there is no one fewer cell with CAT intact
                 irm[self.cs2p[func][state],self.cs2p[func][state]] -= \
-                    self.integrase_activities[self.func2string[func][0]][state]
+                    self.integrase_activities[self.func2string[func]][state]
 
         return irm
 
@@ -295,8 +293,8 @@ class PopulationSimulator:
 
         return np.trapz(Hrates, ts)
 
-    # synthesis rate decay to share_initial of the original value
-    def synth_rate_decay(self,
+    # function duration until synthesis rate falls below share_initial of the initial value
+    def func_duration(self,
                         ts, Hrates,
                         share_initial=0.05):
         less_than_share_initial = np.where(Hrates < share_initial * Hrates[0])[0]
@@ -328,11 +326,11 @@ class PopulationSimulator:
         func_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Number of cells",
             x_range=tspan,
             title='Number of cells',
-            tools="box_zoom,pan,hover,reset"
+            tools="box_zoom,pan,hover,reset,save"
         )
         palette = bkpalettes.Category20[len(self.cs2p.keys())]
         line_cntr = 0
@@ -379,7 +377,7 @@ class PopulationSimulator:
         switch_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Number of cells",
             x_range=tspan,
             title='Switch states of '+self.func2string[func]+' cells',
@@ -434,11 +432,11 @@ class PopulationSimulator:
         burden_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Number of cells",
             x_range=tspan,
-            title='Cells with burden gene present',
-            tools="box_zoom,pan,hover,reset"
+            title='Cells with burdensome gene present',
+            tools="box_zoom,pan,hover,reset,save"
         )
         # plot first trajectory
         burden_figure.line(ts1, N_with_xtra1,
@@ -476,11 +474,11 @@ class PopulationSimulator:
         rate_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Hrate, molecules/hour/cell",
             x_range=tspan,
             title='Average protein synthesis rate per cell',
-            tools="box_zoom,pan,hover,reset"
+            tools="box_zoom,pan,hover,reset,save"
         )
         # plot first trajectory
         rate_figure.line(ts1, Hrates1,
@@ -520,20 +518,20 @@ class PopulationSimulator:
         Hyield1 = self.percell_yield(ts1, Hrates1)
         if (label2 != None):
             Hyield2 = self.percell_yield(ts2, Hrates2)
-        # get decay times
-        decay1 = self.synth_rate_decay(ts1, Hrates1)
+        # get function durations
+        funcdur1 = self.func_duration(ts1, Hrates1)
         if (label2 != None):
-            decay2 = self.synth_rate_decay(ts2, Hrates2)
+            funcdur2 = self.func_duration(ts2, Hrates2)
 
         # PLOT YIELDS
         yield_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
             x_range=x_range,
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Hyield, molecules/hour/cell",
             title='Average protein yield per cell over time',
-            tools="box_zoom,pan,hover,reset"
+            tools="box_zoom,pan,hover,reset,save"
         )
         # plot the box plot
         if (label2 != None):
@@ -544,26 +542,26 @@ class PopulationSimulator:
             yield_figure.vbar(x=[label1], width=0.75, top=[Hyield1],
                               color=['blue'])
 
-        # PLOT DECAY TIMES
-        decay_figure = bkplot.figure(
+        # PLOT FUNCTION DURATIONS
+        funcdur_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
             x_range=x_range,
-            x_axis_label="t, hours",
-            y_axis_label="Decay time, hours",
+            x_axis_label="t, h",
+            y_axis_label="Function duration, h",
             title='Time taken by Hrate to decay to '+str(100*share_initial)+'% of its initial value',
-            tools="box_zoom,pan,hover,reset"
+            tools="box_zoom,pan,hover,reset,save"
         )
         # plot the box plot
         if (label2 != None):
-            decay_figure.vbar(x=[label1, label2], width=0.75,
-                              top=[decay1, decay2],
+            funcdur_figure.vbar(x=[label1, label2], width=0.75,
+                              top=[funcdur1, funcdur2],
                               color=['blue', 'red'])
         else:
-            decay_figure.vbar(x=[label1], width=0.75, top=[decay1],
+            funcdur_figure.vbar(x=[label1], width=0.75, top=[funcdur1],
                               color=['blue'])
 
-        return yield_figure, decay_figure
+        return yield_figure, funcdur_figure
 
     # dilution rate of the cell population
     def plot_dilution(self,
@@ -581,11 +579,11 @@ class PopulationSimulator:
         dilution_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="t, hours",
+            x_axis_label="Time, h",
             y_axis_label="Dilution rate, 1/h",
             x_range=tspan,
             title='Dilution rate of the cell population',
-            tools="box_zoom,pan,hover,reset"
+            tools="box_zoom,pan,hover,reset,save"
         )
         dilution_figure.line(ts, dilution_rate,
                              line_width=2, line_color='blue')
