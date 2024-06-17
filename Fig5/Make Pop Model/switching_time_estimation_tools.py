@@ -93,3 +93,22 @@ def xi(switch_time,  # supposed switching time
 
     # return xi
     return u * jnp.sqrt(n*P) / jnp.sqrt(1-2*d1*u+d2*jnp.square(u))
+
+
+# SWITCHING TIME ESTIMATION BASED ON NUMBER OF SWTICHINGS ALONE
+def mle_numswitch_alone(switch_times,  # switching times
+             n,  # number of samples
+             T  # simulation time
+             ):
+    # find which trajectories switched
+    switched = np.nonzero(switch_times!=0)[0]
+    d=len(switched) # number of switched trajectories
+
+    # find MLE depending on whether all trajectories switched or not
+    if(d>0): # some trajectories switched
+        mle = -T/np.log(1-d/n)
+    else:   # no trajectories switched
+        mle=np.inf
+        print('No trajectories switched. MLE undefined; assumed infinite.')
+
+    return mle
