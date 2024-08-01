@@ -60,12 +60,12 @@ def nocircuit_v(F_calc,     # calculating the transcription regulation functions
 # return the default parameters and initial conditions, species name to ODE vector position decoder and plot colour palette
 def oneconstitutive_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
-    genes = ['xtra']  # names of genes in the circuit
+    genes = ['b']  # names of genes in the circuit
     miscs = []  # names of miscellaneous species involved in the circuit (e.g. metabolites)
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
@@ -136,8 +136,8 @@ def oneconstitutive_initialise():
 
 # transcription regulation functions
 def oneconstitutive_F_calc(t ,x, par, name2pos):
-    F_xtra = 1 # constitutive gene
-    return jnp.array([F_xtra])
+    F_b = 1 # constitutive gene
+    return jnp.array([F_b])
 
 # ode
 def oneconstitutive_ode(F_calc,     # calculating the transcription regulation functions
@@ -154,9 +154,9 @@ def oneconstitutive_ode(F_calc,     # calculating the transcription regulation f
 
     # RETURN THE ODE
     return [# mRNAs
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             # proteins
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']]
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']]
     ]
 
 # stochastic reaction propensities for hybrid tau-leaping simulations
@@ -175,26 +175,26 @@ def oneconstitutive_v(F_calc,     # calculating the transcription regulation fun
 
     # RETURN THE PROPENSITIES
     return [
-            # synthesis, degradation, dilution of xtra gene mRNA
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] / mRNA_count_scales[name2pos['mscale_xtra']],
-            par['b_xtra'] * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            l * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            # synthesis, degradation, dilution of xtra gene protein
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R,
-            par['d_xtra'] * p_prot * x[name2pos['p_xtra']],
-            l * x[name2pos['p_xtra']]
+            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            # synthesis, degradation, dilution of burdensome synthetic gene protein
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
+            par['d_b'] * p_prot * x[name2pos['p_b']],
+            l * x[name2pos['p_b']]
     ]
 
 # ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE [tau-leap compatible]----------------------------------------------
 # initialise all the necessary parameters to simulate the circuit
 def oneconstitutive_cat_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
-    genes = ['xtra','cat']  # names of genes in the circuit
+    genes = ['b','cat']  # names of genes in the circuit
     miscs = []  # names of miscellaneous species involved in the circuit (e.g. metabolites)
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
@@ -265,9 +265,9 @@ def oneconstitutive_cat_initialise():
 
 # transcription regulation functions
 def oneconstitutive_cat_F_calc(t ,x, par, name2pos):
-    F_xtra = 1 # constitutive gene
+    F_b = 1 # constitutive gene
     F_cat = 1 # constitutive gene
-    return jnp.array([F_xtra, F_cat])
+    return jnp.array([F_b, F_cat])
 
 # ode
 def oneconstitutive_cat_ode(F_calc,     # calculating the transcription regulation functions
@@ -284,10 +284,10 @@ def oneconstitutive_cat_ode(F_calc,     # calculating the transcription regulati
 
     # RETURN THE ODE
     return [# mRNAs
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],
             # proteins
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']],
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']]
     ]
 
@@ -307,18 +307,18 @@ def oneconstitutive_cat_v(F_calc,     # calculating the transcription regulation
 
     # RETURN THE PROPENSITIES
     return [
-            # synthesis, degradation, dilution of xtra gene mRNA
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] / mRNA_count_scales[name2pos['mscale_xtra']],
-            par['b_xtra'] * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            l * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
             # synthesis, degradation, dilution of cat gene mRNA
             par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
             par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
             l * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            # synthesis, degradation, dilution of xtra gene protein
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R,
-            par['d_xtra'] * p_prot * x[name2pos['p_xtra']],
-            l * x[name2pos['p_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene protein
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
+            par['d_b'] * p_prot * x[name2pos['p_b']],
+            l * x[name2pos['p_b']],
             # synthesis, degradation, dilution of cat gene protein
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R,
             par['d_cat'] * p_prot * x[name2pos['p_cat']],
@@ -329,12 +329,12 @@ def oneconstitutive_cat_v(F_calc,     # calculating the transcription regulation
 # initialise all the necessary parameters to simulate the circuit
 def oneconstitutive_cat_prot_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
-    genes = ['xtra','cat','prot']  # names of genes in the circuit
+    genes = ['b','cat','prot']  # names of genes in the circuit
     miscs = []  # names of miscellaneous species involved in the circuit (e.g. metabolites)
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
@@ -405,10 +405,10 @@ def oneconstitutive_cat_prot_initialise():
 
 # transcription regulation functions
 def oneconstitutive_cat_prot_F_calc(t ,x, par, name2pos):
-    F_xtra = 1 # constitutive gene
+    F_b = 1 # constitutive gene
     F_cat = 1 # constitutive gene
     F_prot = 1 # constitutive gene
-    return jnp.array([F_xtra, F_cat, F_prot])
+    return jnp.array([F_b, F_cat, F_prot])
 
 # ode
 def oneconstitutive_cat_prot_ode(F_calc,     # calculating the transcription regulation functions
@@ -425,11 +425,11 @@ def oneconstitutive_cat_prot_ode(F_calc,     # calculating the transcription reg
 
     # RETURN THE ODE
     return [# mRNAs
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] - (par['b_prot'] + l) * x[name2pos['m_prot']],
             # proteins
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']],
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
             (e / par['n_prot']) * (x[name2pos['m_prot']] / k_het[name2pos['k_prot']] / D) * R - (l + par['d_prot']*p_prot) * x[name2pos['p_prot']]
     ]
@@ -450,10 +450,10 @@ def oneconstitutive_cat_prot_v(F_calc,     # calculating the transcription regul
 
     # RETURN THE PROPENSITIES
     return [
-            # synthesis, degradation, dilution of xtra gene mRNA
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] / mRNA_count_scales[name2pos['mscale_xtra']],
-            par['b_xtra'] * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            l * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
             # synthesis, degradation, dilution of cat gene mRNA
             par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
             par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
@@ -463,10 +463,10 @@ def oneconstitutive_cat_prot_v(F_calc,     # calculating the transcription regul
             par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             l * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             #
-            # synthesis, degradation, dilution of xtra gene protein
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R,
-            par['d_xtra'] * p_prot * x[name2pos['p_xtra']],
-            l * x[name2pos['p_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene protein
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
+            par['d_b'] * p_prot * x[name2pos['p_b']],
+            l * x[name2pos['p_b']],
             # synthesis, degradation, dilution of cat gene protein
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R,
             par['d_cat'] * p_prot * x[name2pos['p_cat']],
@@ -479,15 +479,15 @@ def oneconstitutive_cat_prot_v(F_calc,     # calculating the transcription regul
 
 
 # PUNISHER AND A SINGLE BURDENSOME GENE [tau-leap compatible, includes a synthetic protease]----------------------------
-def punisher_xtra_initialise():
+def punisher_b_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
-    genes = ['xtra',
+    genes = ['b',
              'switch', 'int', 'cat', 'prot']  # names of genes in the circuit
     miscs = ['cat_pb', 'cat_lri1']  # names of miscellaneous species involved in the circuit. Here, cat gene states with respect to the integrase
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
@@ -586,8 +586,8 @@ def punisher_xtra_initialise():
     return default_par, default_init_conds, genes, miscs, name2pos, circuit_styles
 
 # transcription regulation functions
-def punisher_xtra_F_calc(t ,x, par, name2pos):
-    F_xtra = 1 # constitutive gene
+def punisher_b_F_calc(t ,x, par, name2pos):
+    F_b = 1 # constitutive gene
     F_cat = 1 # constitutive gene
 
     # switch and integrase genes regulated by p_switch
@@ -595,14 +595,14 @@ def punisher_xtra_F_calc(t ,x, par, name2pos):
     F_switch = par['baseline_switch'] + (1 - par['baseline_switch']) * (p_switch_dependent_term/(p_switch_dependent_term+1))
     F_int = 0    # integrase expressed from the same operon as the switch protein, not its own gene
     F_prot = 1 # constitutive gene
-    return jnp.array([F_xtra,
+    return jnp.array([F_b,
             F_switch,
             F_int,
             F_cat,
             F_prot])
 
 # ode
-def punisher_xtra_ode(F_calc,     # calculating the transcription regulation functions
+def punisher_b_ode(F_calc,     # calculating the transcription regulation functions
             t,  x,  # time, cell state, external inputs
             e, l, # translation elongation rate, growth rate
             R, # ribosome count in the cell, resource
@@ -623,13 +623,13 @@ def punisher_xtra_ode(F_calc,     # calculating the transcription regulation fun
 
     # RETURN THE ODE
     return [# mRNAs
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] - (par['b_switch'] + l) * x[name2pos['m_switch']],
             0, # integrase expressed from the same operon as the switch protein, not its own gene
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],  # NOTE: GENE COPY NO. GIVEN BY CMR_PB!
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] - (par['b_prot'] + l) * x[name2pos['m_prot']],
             # proteins
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']],
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_switch']) * (x[name2pos['m_switch']] / k_het[name2pos['k_switch']] / D) * R - (l + par['d_switch']*p_prot) * x[name2pos['p_switch']],
             (e / par['n_int']) * (m_int / k_het[name2pos['k_int']] / D) * R - (l + par['d_int']*p_prot) * x[name2pos['p_int']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
@@ -643,7 +643,7 @@ def punisher_xtra_ode(F_calc,     # calculating the transcription regulation fun
     ]
 
 # stochastic reaction propensities for hybrid tau-leaping simulations
-def punisher_xtra_v(F_calc,     # calculating the transcription regulation functions
+def punisher_b_v(F_calc,     # calculating the transcription regulation functions
             t,  x,  # time, cell state, external inputs
             e, l, # translation elongation rate, growth rate
             R, # ribosome count in the cell, resource
@@ -665,10 +665,10 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
 
     # RETURN THE PROPENSITIES
     return [
-            # synthesis, degradation, dilution of xtra gene mRNA
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] / mRNA_count_scales[name2pos['mscale_xtra']],
-            par['b_xtra'] * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            l * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
             # synthesis, degradation, dilution of switch gene mRNA
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] / mRNA_count_scales[name2pos['mscale_switch']],
             par['b_switch'] * x[name2pos['m_switch']] / mRNA_count_scales[name2pos['mscale_switch']],
@@ -686,10 +686,10 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
             par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             l * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             #
-            # synthesis, degradation, dilution of xtra gene protein
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R,
-            par['d_xtra']*p_prot * x[name2pos['p_xtra']],
-            l * x[name2pos['p_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene protein
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
+            par['d_b']*p_prot * x[name2pos['p_b']],
+            l * x[name2pos['p_b']],
             # synthesis, degradation, dilution of switch gene protein
             (e / par['n_switch']) * (x[name2pos['m_switch']] / k_het[name2pos['k_switch']] / D) * R,
             par['d_switch']*p_prot * x[name2pos['p_switch']],
@@ -720,16 +720,16 @@ def punisher_xtra_v(F_calc,     # calculating the transcription regulation funct
 
 
 # PUNISHER - WITH SWITCH PROT. AND INTEGRASE EXPRESSED SEPARATELY - AND A SINGLE BURDENSOME GENE [tau-leap compatible]--
-def punisher_sep_xtra_initialise():
+def punisher_sep_b_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
-    genes = ['xtra',
+    genes = ['b',
              'switch', 'int', 'cat', 'prot']  # names of genes in the circuit
     miscs = ['cat_pb',
              'cat_lri1']  # names of miscellaneous species involved in the circuit. Here, cat gene states with respect to the integrase
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
@@ -829,8 +829,8 @@ def punisher_sep_xtra_initialise():
     return default_par, default_init_conds, genes, miscs, name2pos, circuit_styles
 
 # transcription regulation functions
-def punisher_sep_xtra_F_calc(t ,x, par, name2pos):
-    F_xtra = 1 # constitutive gene
+def punisher_sep_b_F_calc(t ,x, par, name2pos):
+    F_b = 1 # constitutive gene
     F_cat = 1 # constitutive gene
 
     # switch and integrase genes regulated by p_switch
@@ -838,14 +838,14 @@ def punisher_sep_xtra_F_calc(t ,x, par, name2pos):
     F_switch = par['baseline_switch'] + (1 - par['baseline_switch']) * (p_switch_dependent_term/(p_switch_dependent_term+1))
     F_int = F_switch    # integrase co-regulated with the switch protein
     F_prot = 1 # constitutive gene
-    return jnp.array([F_xtra,
+    return jnp.array([F_b,
             F_switch,
             F_int,
             F_cat,
             F_prot])
 
 # ode
-def punisher_sep_xtra_ode(F_calc,     # calculating the transcription regulation functions
+def punisher_sep_b_ode(F_calc,     # calculating the transcription regulation functions
             t,  x,  # time, cell state, external inputs
             e, l, # translation elongation rate, growth rate
             R, # ribosome count in the cell, resource
@@ -862,13 +862,13 @@ def punisher_sep_xtra_ode(F_calc,     # calculating the transcription regulation
 
     # RETURN THE ODE
     return [# mRNAs
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] - (par['b_xtra'] + l) * x[name2pos['m_xtra']],
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] - (par['b_switch'] + l) * x[name2pos['m_switch']],
             par['func_int'] * l * F[name2pos['F_int']] * par['c_int'] * par['a_int'] - (par['b_int'] + l) * x[name2pos['m_int']],
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],  # NOTE: GENE COPY NO. GIVEN BY CMR_PB!
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] - (par['b_prot'] + l) * x[name2pos['m_prot']],
             # proteins
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R - (l + par['d_xtra']*p_prot) * x[name2pos['p_xtra']],
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_switch']) * (x[name2pos['m_switch']] / k_het[name2pos['k_switch']] / D) * R - (l + par['d_switch']*p_prot) * x[name2pos['p_switch']],
             (e / par['n_int']) * (x[name2pos['m_int']] / k_het[name2pos['k_int']] / D) * R - (l + par['d_int']*p_prot) * x[name2pos['p_int']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
@@ -882,7 +882,7 @@ def punisher_sep_xtra_ode(F_calc,     # calculating the transcription regulation
     ]
 
 # stochastic reaction propensities for hybrid tau-leaping simulations
-def punisher_sep_xtra_v(F_calc,     # calculating the transcription regulation functions
+def punisher_sep_b_v(F_calc,     # calculating the transcription regulation functions
             t,  x,  # time, cell state, external inputs
             e, l, # translation elongation rate, growth rate
             R, # ribosome count in the cell, resource
@@ -900,10 +900,10 @@ def punisher_sep_xtra_v(F_calc,     # calculating the transcription regulation f
 
     # RETURN THE PROPENSITIES
     return [
-            # synthesis, degradation, dilution of xtra gene mRNA
-            par['func_xtra'] * l * F[name2pos['F_xtra']] * par['c_xtra'] * par['a_xtra'] / mRNA_count_scales[name2pos['mscale_xtra']],
-            par['b_xtra'] * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
-            l * x[name2pos['m_xtra']] / mRNA_count_scales[name2pos['mscale_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
+            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
+            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
             # synthesis, degradation, dilution of switch gene mRNA
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] / mRNA_count_scales[name2pos['mscale_switch']],
             par['b_switch'] * x[name2pos['m_switch']] / mRNA_count_scales[name2pos['mscale_switch']],
@@ -921,10 +921,10 @@ def punisher_sep_xtra_v(F_calc,     # calculating the transcription regulation f
             par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             l * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
             #
-            # synthesis, degradation, dilution of xtra gene protein
-            (e / par['n_xtra']) * (x[name2pos['m_xtra']] / k_het[name2pos['k_xtra']] / D) * R,
-            par['d_xtra']*p_prot * x[name2pos['p_xtra']],
-            l * x[name2pos['p_xtra']],
+            # synthesis, degradation, dilution of burdensome synthetic gene protein
+            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
+            par['d_b']*p_prot * x[name2pos['p_b']],
+            l * x[name2pos['p_b']],
             # synthesis, degradation, dilution of switch gene protein
             (e / par['n_switch']) * (x[name2pos['m_switch']] / k_het[name2pos['k_switch']] / D) * R,
             par['d_switch']*p_prot * x[name2pos['p_switch']],
@@ -963,7 +963,7 @@ def twotoggles_punisher_initialise():
     # -------- ...TO HERE
 
     # for convenience, one can refer to the species' concs. by names instead of positions in x
-    # e.g. x[name2pos['m_xtra']] will return the concentration of mRNA of the gene 'xtra'
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
     name2pos = {}
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
