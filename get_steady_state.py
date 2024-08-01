@@ -243,7 +243,7 @@ def values_for_analytical_sep(par,  # dictionary with model parameters
     xi_r = xi_calc(1,F_r,par['c_r'],par['a_r'],k_r)  # ribosomal genes
     xi_cat = xi_calc(par['func_cat'],1,par['c_cat'],par['a_cat'],k_cat)  # chloramphenicol resistance gene (F=1 since the gene is constitutive)
     xi_switch_max = xi_calc(par['func_switch'],1,par['c_switch'],par['a_switch'],k_switch)  # MAXIMUM  for the self-activating switch gene (F=1 for MAXIMUM POSSIBLE EXPRESSION)
-    xi_int_max = xi_calc(par['func_int'],1,par['c_int'],par['a_int'],k_int)  # MAXIMUM for the integrase gene (F=1 for MAXIMUM POSSIBLE EXPRESSION). IMPORTANT: INTEGRASE EXPRESSED FROM SAME OPERON AS SWITCH
+    xi_int_max = xi_calc(par['func_int'],1,par['c_switch'],par['a_switch'],k_int)  # MAXIMUM for the integrase gene (F=1 for MAXIMUM POSSIBLE EXPRESSION). IMPORTANT: INTEGRASE EXPRESSED FROM SAME OPERON AS SWITCH
     xi_prot = xi_calc(par['func_prot'],1,par['c_prot'],par['a_prot'],k_prot)  # MAXIMUM for the protease gene (F=1 for MAXIMUM POSSIBLE EXPRESSION)
 
     # get the total burden (xi) values for all remaining synthetic genes
