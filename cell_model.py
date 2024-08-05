@@ -11,7 +11,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 import functools
-from diffrax import diffeqsolve, Kvaerno3, ODETerm, SaveAt, PIDController, SteadyStateEvent
+from diffrax import diffeqsolve, Kvaerno3, Heun, ODETerm, SaveAt, PIDController, SteadyStateEvent
 import pandas as pd
 from bokeh import plotting as bkplot, models as bkmodels, layouts as bklayouts
 
