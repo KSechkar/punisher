@@ -680,7 +680,7 @@ def punisher_b_v(F_calc,     # calculating the transcription regulation function
             # synthesis, degradation, dilution of cat gene mRNA
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
             par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            l * x[name2pos['m_cat']],
+            l * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
             # synthesis, degradation, dilution of protease gene mRNA
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] / mRNA_count_scales[name2pos['mscale_prot']],
             par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
@@ -865,7 +865,7 @@ def punisher_sep_b_ode(F_calc,     # calculating the transcription regulation fu
             par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] - (par['b_b'] + l) * x[name2pos['m_b']],
             par['func_switch'] * l * F[name2pos['F_switch']] * par['c_switch'] * par['a_switch'] - (par['b_switch'] + l) * x[name2pos['m_switch']],
             par['func_int'] * l * F[name2pos['F_int']] * par['c_int'] * par['a_int'] - (par['b_int'] + l) * x[name2pos['m_int']],
-            par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],  # NOTE: GENE COPY NO. GIVEN BY CMR_PB!
+            par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] - (par['b_cat'] + l) * x[name2pos['m_cat']],  # NOTE: GENE COPY NO. GIVEN BY CAT_PB!
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] - (par['b_prot'] + l) * x[name2pos['m_prot']],
             # proteins
             (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
@@ -915,7 +915,7 @@ def punisher_sep_b_v(F_calc,     # calculating the transcription regulation func
             # synthesis, degradation, dilution of cat gene mRNA
             par['func_cat'] * l * F[name2pos['F_cat']] * x[name2pos['cat_pb']] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
             par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            l * x[name2pos['m_cat']],
+            l * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
             # synthesis, degradation, dilution of protease gene mRNA
             par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] / mRNA_count_scales[name2pos['mscale_prot']],
             par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
@@ -1164,3 +1164,334 @@ def twotoggles_punisher_ode(F_calc,     # calculating the transcription regulati
                 -par['k_+syn'] * x[name2pos['cat_lri1']] - l*x[name2pos['cat_lri1']]) # no replenishment from LRI2/LR as strands diffuse away
     ]
 
+# TWO TOGGLE SWITCHES ONLY----------------------------------------------------------------------------------------------
+def twotoggles_only_initialise():
+    # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
+    genes = ['tog11','tog12','tog21','tog22']  # toggle switches
+    miscs = []  # names of miscellaneous species involved in the circuit
+    # -------- ...TO HERE
+
+    # for convenience, one can refer to the species' concs. by names instead of positions in x
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
+    name2pos = {}
+    for i in range(0, len(genes)):
+        name2pos['m_' + genes[i]] = 8 + i  # mRNA
+        name2pos['p_' + genes[i]] = 8 + len(genes) + i  # protein
+    for i in range(0, len(miscs)):
+        name2pos[miscs[i]] = 8 + len(genes) * 2 + i  # miscellaneous species
+    for i in range(0, len(genes)):
+        name2pos['k_' + genes[i]] = i  # effective mRNA-ribosome dissociation constants (in k_het, not x!!!)
+    for i in range(0, len(genes)):
+        name2pos['F_' + genes[i]] = i  # transcription regulation functions (in F, not x!!!)
+
+    # default gene parameters to be imported into the main model's parameter dictionary
+    default_par = {}
+    for gene in genes:  # gene parameters
+        default_par['func_' + gene] = 1.0  # gene functionality - 1 if working, 0 if mutated
+        default_par['c_' + gene] = 1.0  # copy no. (nM)
+        default_par['a_' + gene] = 100.0  # promoter strength (unitless)
+        default_par['b_' + gene] = 6.0  # mRNA decay rate (/h)
+        default_par['k+_' + gene] = 60.0  # ribosome binding rate (/h/nM)
+        default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
+        default_par['n_' + gene] = 300.0  # protein length (aa)
+        default_par['d_' + gene] = 0.0  # rate of active protein degradation - zero by default (/h)
+
+    # special genes - must be handled in a particular way if not presemt
+    # chloramphenicol acetlytransferase gene - antibiotic resistance
+    if ('cat' in genes):
+        default_par['cat_gene_present'] = 1  # chloramphenicol resistance gene present
+    else:
+        default_par['cat_gene_present'] = 0  # chloramphenicol resistance gene absent
+        # add placeholder to the position decoder dictionary - will never be used but are required for correct execution
+        name2pos['p_cat'] = 0
+    # synthetic protease gene - synthetic protein degradation
+    if ('prot' in genes):
+        default_par['prot_gene_present'] = 1
+    else:
+        default_par['prot_gene_present'] = 0
+        name2pos['p_prot'] = 0
+
+    # default initial conditions
+    default_init_conds = {}
+    for gene in genes:
+        default_init_conds['m_' + gene] = 0
+        default_init_conds['p_' + gene] = 0
+    for misc in miscs:
+        default_init_conds[misc] = 0
+
+    # -------- DEFAULT VALUES OF CIRCUIT-SPECIFIC PARAMETERS CAN BE SPECIFIED FROM HERE...
+    # toggle switch parameters
+    for togswitchnum in (1, 2):  # cycle through toggle switches
+        for toggenenum in (1, 2):  # cycle through the genes of the current switch
+            default_par['c_tog' + str(togswitchnum) + str(toggenenum)] = 1  # copy no. (nM)
+            default_par['a_tog' + str(togswitchnum) + str(toggenenum)] = 10 ** 5 / 2  # promoter strength (unitless)
+
+            # transcription regulation function
+            reg_func_string = 'dna(tog' + str(togswitchnum) + str(toggenenum) + '):p_tog' + str(togswitchnum) + str(
+                toggenenum % 2 + 1)
+            default_par['K_' + reg_func_string] = 2000  # half-saturation constant
+            default_par['eta_' + reg_func_string] = 2  # Hill coefficient
+            default_par['baseline_tog' + str(togswitchnum) + str(
+                toggenenum)] = 0.05  # baseline transcription activation due to leakiness
+            default_par['p_tog' + str(togswitchnum) + str(
+                toggenenum) + '_ac_frac'] = 1  # active fraction of protein (i.e. share of molecules NOT bound by the inducer)
+
+        # break symmetry for each of the toggle switches
+        default_init_conds['m_tog' + str(togswitchnum) + '1'] = 500
+    # -------- ...TO HERE
+
+    # default palette and dashes for plotting (5 genes + misc. species max)
+    default_palette = ["dodgerblue", "chocolate", "orchid", "crimson",
+                       "darkcyan", "darkgoldenrod", "darkviolet", "firebrick"]  # match default palette to genes looping over the five colours we defined
+    default_dash = ['solid']
+    # match default palette to genes and miscellaneous species, looping over the five colours we defined
+    circuit_styles = {'colours': {}, 'dashes': {}}  # initialise dictionary
+    for i in range(0, len(genes)):
+        circuit_styles['colours'][genes[i]] = default_palette[i % len(default_palette)]
+        circuit_styles['dashes'][genes[i]] = default_dash[i % len(default_dash)]
+    for i in range(len(genes), len(genes) + len(miscs)):
+        circuit_styles['colours'][miscs[i - len(genes)]] = default_palette[i % len(default_palette)]
+        circuit_styles['dashes'][miscs[i - len(genes)]] = default_dash[i % len(default_dash)]
+
+    # --------  YOU CAN RE-SPECIFY COLOURS FOR PLOTTING FROM HERE...
+    # -------- ...TO HERE
+
+    return default_par, default_init_conds, genes, miscs, name2pos, circuit_styles
+
+
+# transcription regulation functions
+def twotoggles_only_F_calc(t ,x, par, name2pos):
+    F_cat = 1 # cat is a constitutive gene
+
+    # toggle switch 1
+    F_tog11 = par['baseline_tog11'] + (1 - par['baseline_tog11']) * \
+        1 / (1 +
+             (x[name2pos['p_tog12']] * par['p_tog12_ac_frac'] / par['K_dna(tog11):p_tog12']) ** par['eta_dna(tog11):p_tog12'])  # tog11: regulated by p_tog12
+
+    F_tog12 = par['baseline_tog12'] + (1 - par['baseline_tog12']) * \
+                1 / (1 + (x[name2pos['p_tog11']] * par['p_tog11_ac_frac'] / par[
+                'K_dna(tog12):p_tog11']) ** par['eta_dna(tog12):p_tog11'])  # tog12: regulated by p_tog11
+
+    # toggle switch 2
+    F_tog21 = par['baseline_tog21'] + (1 - par['baseline_tog21']) * \
+                1 / (1 + (x[name2pos['p_tog22']] * par['p_tog22_ac_frac'] / par[
+                'K_dna(tog21):p_tog22']) ** par['eta_dna(tog21):p_tog22'])  # tog21: regulated by p_tog22
+    F_tog22 = par['baseline_tog22'] + (1 - par['baseline_tog22']) * \
+                1 / (1 + (x[name2pos['p_tog21']] * par['p_tog21_ac_frac'] / par[
+                'K_dna(tog22):p_tog21']) ** par['eta_dna(tog22):p_tog21'])  # tog22: regulated by p_tog21
+
+    return jnp.array([F_tog11,
+                      F_tog12,
+                      F_tog21,
+                      F_tog22])
+
+
+# ode
+def twotoggles_only_ode(F_calc,     # calculating the transcription regulation functions
+            t,  x,  # time, cell state, external inputs
+            e, l, # translation elongation rate, growth rate
+            R, # ribosome count in the cell, resource
+            k_het, D, # effective mRNA-ribosome dissociation constants for synthetic genes, resource competition denominator
+            p_prot, # synthetic protease concentration
+            par,  # system parameters
+            name2pos  # name to position decoder
+            ):
+    # GET REGULATORY FUNCTION VALUES
+    F = F_calc(t, x, par, name2pos)
+
+    # RETURN THE ODE
+    return [# mRNAs
+            par['func_tog11'] * l * F[name2pos['F_tog11']] * par['c_tog11'] * par['a_tog11'] - (par['b_tog11'] + l) * x[name2pos['m_tog11']],
+            par['func_tog12'] * l * F[name2pos['F_tog12']] * par['c_tog12'] * par['a_tog12'] - (par['b_tog12'] + l) * x[name2pos['m_tog12']],
+            par['func_tog21'] * l * F[name2pos['F_tog21']] * par['c_tog21'] * par['a_tog21'] - (par['b_tog21'] + l) * x[name2pos['m_tog21']],
+            par['func_tog22'] * l * F[name2pos['F_tog22']] * par['c_tog22'] * par['a_tog22'] - (par['b_tog22'] + l) * x[name2pos['m_tog22']],
+            # proteins
+            (e / par['n_tog11']) * (x[name2pos['m_tog11']] / k_het[name2pos['k_tog11']] / D) * R - (l + par['d_tog11']*p_prot) * x[name2pos['p_tog11']],
+            (e / par['n_tog12']) * (x[name2pos['m_tog12']] / k_het[name2pos['k_tog12']] / D) * R - (l + par['d_tog12']*p_prot) * x[name2pos['p_tog12']],
+            (e / par['n_tog21']) * (x[name2pos['m_tog21']] / k_het[name2pos['k_tog21']] / D) * R - (l + par['d_tog21']*p_prot) * x[name2pos['p_tog21']],
+            (e / par['n_tog22']) * (x[name2pos['m_tog22']] / k_het[name2pos['k_tog22']] / D) * R - (l + par['d_tog22']*p_prot) * x[name2pos['p_tog22']],
+    ]
+
+# TWO TOGGLE SWITCHES WITH SYNTHETIC ADDICTION -------------------------------------------------------------------------
+def twotoggles_add_initialise():
+    # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
+    genes = ['tog11', 'tog12', 'tog21', 'tog22',  # toggle switches
+             'cat']  # CAT (co-expressed from the same operons as the toggle switch genes)
+    miscs = []  # names of miscellaneous species involved in the circuit. Here, none
+    # -------- ...TO HERE
+
+    # for convenience, one can refer to the species' concs. by names instead of positions in x
+    # e.g. x[name2pos['m_b']] will return the concentration of mRNA of the gene 'b'
+    name2pos = {}
+    for i in range(0, len(genes)):
+        name2pos['m_' + genes[i]] = 8 + i  # mRNA
+        name2pos['p_' + genes[i]] = 8 + len(genes) + i  # protein
+    for i in range(0, len(miscs)):
+        name2pos[miscs[i]] = 8 + len(genes) * 2 + i  # miscellaneous species
+    for i in range(0, len(genes)):
+        name2pos['k_' + genes[i]] = i  # effective mRNA-ribosome dissociation constants (in k_het, not x!!!)
+    for i in range(0, len(genes)):
+        name2pos['F_' + genes[i]] = i  # transcription regulation functions (in F, not x!!!)
+
+    # default gene parameters to be imported into the main model's parameter dictionary
+    default_par = {}
+    for gene in genes:  # gene parameters
+        default_par['func_' + gene] = 1.0  # gene functionality - 1 if working, 0 if mutated
+        default_par['c_' + gene] = 1.0  # copy no. (nM)
+        default_par['a_' + gene] = 100.0  # promoter strength (unitless)
+        default_par['b_' + gene] = 6.0  # mRNA decay rate (/h)
+        default_par['k+_' + gene] = 60.0  # ribosome binding rate (/h/nM)
+        default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
+        default_par['n_' + gene] = 300.0  # protein length (aa)
+        default_par['d_' + gene] = 0.0  # rate of active protein degradation - zero by default (/h)
+
+    # special genes - must be handled in a particular way if not presemt
+    # chloramphenicol acetlytransferase gene - antibiotic resistance
+    if ('cat' in genes):
+        default_par['cat_gene_present'] = 1  # chloramphenicol resistance gene present
+    else:
+        default_par['cat_gene_present'] = 0  # chloramphenicol resistance gene absent
+        # add placeholder to the position decoder dictionary - will never be used but are required for correct execution
+        name2pos['p_cat'] = 0
+    # synthetic protease gene - synthetic protein degradation
+    if ('prot' in genes):
+        default_par['prot_gene_present'] = 1
+    else:
+        default_par['prot_gene_present'] = 0
+        name2pos['p_prot'] = 0
+
+    # default initial conditions
+    default_init_conds = {}
+    for gene in genes:
+        default_init_conds['m_' + gene] = 0
+        default_init_conds['p_' + gene] = 0
+    for misc in miscs:
+        default_init_conds[misc] = 0
+
+    # -------- DEFAULT VALUES OF CIRCUIT-SPECIFIC PARAMETERS CAN BE SPECIFIED FROM HERE...
+    # toggle switch parameters
+    for togswitchnum in (1, 2):  # cycle through toggle switches
+        for toggenenum in (1, 2):  # cycle through the genes of the current switch
+            default_par['c_tog' + str(togswitchnum) + str(toggenenum)] = 1  # copy no. (nM)
+            default_par['a_tog' + str(togswitchnum) + str(toggenenum)] = 10 ** 5 / 2  # promoter strength (unitless)
+
+            # transcription regulation function
+            reg_func_string = 'dna(tog' + str(togswitchnum) + str(toggenenum) + '):p_tog' + str(togswitchnum) + str(
+                toggenenum % 2 + 1)
+            default_par['K_' + reg_func_string] = 2000  # half-saturation constant
+            default_par['eta_' + reg_func_string] = 2  # Hill coefficient
+            default_par['baseline_tog' + str(togswitchnum) + str(
+                toggenenum)] = 0.05  # baseline transcription activation due to leakiness
+            default_par['p_tog' + str(togswitchnum) + str(
+                toggenenum) + '_ac_frac'] = 1  # active fraction of protein (i.e. share of molecules NOT bound by the inducer)
+
+        # break symmetry for each of the toggle switches
+        default_init_conds['m_tog' + str(togswitchnum) + '1'] = 500
+
+    # co-expressed CAT gene
+    default_par['n_cat'] = 300  # protein length (aa)
+    default_par['d_cat'] = 0  # rate of active protein degradation - zero by default (/h)
+    default_par['k+_cat11'] = 60  # ribosome binding rate (/h/nM)
+    default_par['k-_cat11'] = 60  # ribosome unbinding rate (/h)
+    default_par['k+_cat12'] = 60  # ribosome binding rate (/h/nM)
+    default_par['k-_cat12'] = 60  # ribosome unbinding rate (/h)
+    default_par['k+_cat21'] = 60  # ribosome binding rate (/h/nM)
+    default_par['k-_cat21'] = 60  # ribosome unbinding rate (/h)
+    default_par['k+_cat22'] = 60  # ribosome binding rate (/h/nM)
+    default_par['k-_cat22'] = 60  # ribosome unbinding rate (/h)
+    # -------- ...TO HERE
+
+    # default palette and dashes for plotting (5 genes + misc. species max)
+    default_palette = ["dodgerblue", "chocolate", "orchid", "crimson",
+                       "darkcyan", "darkgoldenrod", "darkviolet", "firebrick"]  # match default palette to genes looping over the five colours we defined
+    default_dash = ['solid']
+    # match default palette to genes and miscellaneous species, looping over the five colours we defined
+    circuit_styles = {'colours': {}, 'dashes': {}}  # initialise dictionary
+    for i in range(0, len(genes)):
+        circuit_styles['colours'][genes[i]] = default_palette[i % len(default_palette)]
+        circuit_styles['dashes'][genes[i]] = default_dash[i % len(default_dash)]
+    for i in range(len(genes), len(genes) + len(miscs)):
+        circuit_styles['colours'][miscs[i - len(genes)]] = default_palette[i % len(default_palette)]
+        circuit_styles['dashes'][miscs[i - len(genes)]] = default_dash[i % len(default_dash)]
+
+    # --------  YOU CAN RE-SPECIFY COLOURS FOR PLOTTING FROM HERE...
+    # give cat gene states same colours as cat mRNA and protein but different dashes
+    circuit_styles['colours']['cat_pb'] = circuit_styles['colours']['cat']
+    circuit_styles['colours']['cat_lri1'] = circuit_styles['colours']['cat']
+
+    circuit_styles['dashes']['cat_pb'] = 'solid'  # fully functional gene => solid dash
+    circuit_styles['dashes']['cat_lri1'] = 'dashed'  # non-functional => non-solid
+    # -------- ...TO HERE
+
+    return default_par, default_init_conds, genes, miscs, name2pos, circuit_styles
+
+
+# transcription regulation functions
+def twotoggles_add_F_calc(t ,x, par, name2pos):
+    F_cat = 0 # irrelevant, as CAT co-expressed with toggle switch genes
+
+    # toggle switch 1
+    F_tog11 = par['baseline_tog11'] + (1 - par['baseline_tog11']) * \
+        1 / (1 +
+             (x[name2pos['p_tog12']] * par['p_tog12_ac_frac'] / par['K_dna(tog11):p_tog12']) ** par['eta_dna(tog11):p_tog12'])  # tog11: regulated by p_tog12
+
+    F_tog12 = par['baseline_tog12'] + (1 - par['baseline_tog12']) * \
+                1 / (1 + (x[name2pos['p_tog11']] * par['p_tog11_ac_frac'] / par[
+                'K_dna(tog12):p_tog11']) ** par['eta_dna(tog12):p_tog11'])  # tog12: regulated by p_tog11
+
+    # toggle switch 2
+    F_tog21 = par['baseline_tog21'] + (1 - par['baseline_tog21']) * \
+                1 / (1 + (x[name2pos['p_tog22']] * par['p_tog22_ac_frac'] / par[
+                'K_dna(tog21):p_tog22']) ** par['eta_dna(tog21):p_tog22'])  # tog21: regulated by p_tog22
+    F_tog22 = par['baseline_tog22'] + (1 - par['baseline_tog22']) * \
+                1 / (1 + (x[name2pos['p_tog21']] * par['p_tog21_ac_frac'] / par[
+                'K_dna(tog22):p_tog21']) ** par['eta_dna(tog22):p_tog21'])  # tog22: regulated by p_tog21
+
+    return jnp.array([F_tog11,
+                      F_tog12,
+                      F_tog21,
+                      F_tog22,
+                      F_cat])
+
+
+# ode
+def twotoggles_add_ode(F_calc,     # calculating the transcription regulation functions
+            t,  x,  # time, cell state, external inputs
+            e, l, # translation elongation rate, growth rate
+            R, # ribosome count in the cell, resource
+            k_het, D, # effective mRNA-ribosome dissociation constants for synthetic genes, resource competition denominator
+            p_prot, # synthetic protease concentration
+            par,  # system parameters
+            name2pos  # name to position decoder
+            ):
+    # GET REGULATORY FUNCTION VALUES
+    F = F_calc(t, x, par, name2pos)
+
+    # get the concentration of the CAT mRNA,scaled to account for translation by multiple ribosomes
+    # same operon as the four toggle genes, but possibly not the same length in codons => rescaling m_switch
+    m_cat11 = x[name2pos['m_tog11']] * par['n_cat'] / par['n_tog11']
+    m_cat12 = x[name2pos['m_tog12']] * par['n_cat'] / par['n_tog12']
+    m_cat21 = x[name2pos['m_tog21']] * par['n_cat'] / par['n_tog21']
+    m_cat22 = x[name2pos['m_tog22']] * par['n_cat'] / par['n_tog22']
+    # get the RNA-ribosome dissociation constants for the CAT gene copies
+    k_cat11 = (par['k-_cat11'] + e / par['n_cat']) / par['k+_cat11']
+    k_cat12 = (par['k-_cat12'] + e / par['n_cat']) / par['k+_cat12']
+    k_cat21 = (par['k-_cat21'] + e / par['n_cat']) / par['k+_cat21']
+    k_cat22 = (par['k-_cat22'] + e / par['n_cat']) / par['k+_cat22']
+    # get total CAT mRNA concentration divided by RNA-ribosome dissociation constants
+    mcat_div_kcat_total = m_cat11 / k_cat11 + m_cat12 / k_cat12 + m_cat21 / k_cat21 + m_cat22 / k_cat22
+
+    # RETURN THE ODE
+    return [# mRNAs
+            par['func_tog11'] * l * F[name2pos['F_tog11']] * par['c_tog11'] * par['a_tog11'] - (par['b_tog11'] + l) * x[name2pos['m_tog11']],
+            par['func_tog12'] * l * F[name2pos['F_tog12']] * par['c_tog12'] * par['a_tog12'] - (par['b_tog12'] + l) * x[name2pos['m_tog12']],
+            par['func_tog21'] * l * F[name2pos['F_tog21']] * par['c_tog21'] * par['a_tog21'] - (par['b_tog21'] + l) * x[name2pos['m_tog21']],
+            par['func_tog22'] * l * F[name2pos['F_tog22']] * par['c_tog22'] * par['a_tog22'] - (par['b_tog22'] + l) * x[name2pos['m_tog22']],
+            0,  # CAT expressed from the same operons as the toggle protein, not its own gene
+            # proteins
+            (e / par['n_tog11']) * (x[name2pos['m_tog11']] / k_het[name2pos['k_tog11']] / D) * R - (l + par['d_tog11']*p_prot) * x[name2pos['p_tog11']],
+            (e / par['n_tog12']) * (x[name2pos['m_tog12']] / k_het[name2pos['k_tog12']] / D) * R - (l + par['d_tog12']*p_prot) * x[name2pos['p_tog12']],
+            (e / par['n_tog21']) * (x[name2pos['m_tog21']] / k_het[name2pos['k_tog21']] / D) * R - (l + par['d_tog21']*p_prot) * x[name2pos['p_tog21']],
+            (e / par['n_tog22']) * (x[name2pos['m_tog22']] / k_het[name2pos['k_tog22']] / D) * R - (l + par['d_tog22']*p_prot) * x[name2pos['p_tog22']],
+            (e / par['n_cat']) * (mcat_div_kcat_total / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
+    ]
