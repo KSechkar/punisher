@@ -185,7 +185,7 @@ def oneconstitutive_v(F_calc,     # calculating the transcription regulation fun
             l * x[name2pos['p_b']]
     ]
 
-# ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE [tau-leap compatible]----------------------------------------------
+# ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE -------------------------------------------------------------------
 # initialise all the necessary parameters to simulate the circuit
 def oneconstitutive_cat_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
@@ -291,41 +291,7 @@ def oneconstitutive_cat_ode(F_calc,     # calculating the transcription regulati
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']]
     ]
 
-# stochastic reaction propensities for hybrid tau-leaping simulations
-def oneconstitutive_cat_v(F_calc,     # calculating the transcription regulation functions
-            t,  x,  # time, cell state, external inputs
-            e, l, # translation elongation rate, growth rate
-            R, # ribosome count in the cell, resource
-            k_het, D, # effective mRNA-ribosome dissociation constants for synthetic genes, resource competition denominator
-            p_prot, # synthetic protease concentration
-            mRNA_count_scales, # scaling factors for mRNA counts
-            par,  # system parameters
-            name2pos
-            ):
-    # GET REGULATORY FUNCTION VALUES
-    F = F_calc(t, x, par, name2pos)
-
-    # RETURN THE PROPENSITIES
-    return [
-            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
-            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
-            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
-            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
-            # synthesis, degradation, dilution of cat gene mRNA
-            par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
-            par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            l * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            # synthesis, degradation, dilution of burdensome synthetic gene protein
-            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
-            par['d_b'] * p_prot * x[name2pos['p_b']],
-            l * x[name2pos['p_b']],
-            # synthesis, degradation, dilution of cat gene protein
-            (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R,
-            par['d_cat'] * p_prot * x[name2pos['p_cat']],
-            l * x[name2pos['p_cat']]
-    ]
-
-# ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE + SYNTHETIC PROTEASE [tau-leap compatible]--------------------------
+# ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE + SYNTHETIC PROTEASE ----------------------------------------------
 # initialise all the necessary parameters to simulate the circuit
 def oneconstitutive_cat_prot_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
@@ -432,49 +398,6 @@ def oneconstitutive_cat_prot_ode(F_calc,     # calculating the transcription reg
             (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
             (e / par['n_prot']) * (x[name2pos['m_prot']] / k_het[name2pos['k_prot']] / D) * R - (l + par['d_prot']*p_prot) * x[name2pos['p_prot']]
-    ]
-
-# stochastic reaction propensities for hybrid tau-leaping simulations
-def oneconstitutive_cat_prot_v(F_calc,     # calculating the transcription regulation functions
-            t,  x,  # time, cell state, external inputs
-            e, l, # translation elongation rate, growth rate
-            R, # ribosome count in the cell, resource
-            k_het, D, # effective mRNA-ribosome dissociation constants for synthetic genes, resource competition denominator
-            p_prot, # synthetic protease concentration
-            mRNA_count_scales, # scaling factors for mRNA counts
-            par,  # system parameters
-            name2pos
-            ):
-    # GET REGULATORY FUNCTION VALUES
-    F = F_calc(t, x, par, name2pos)
-
-    # RETURN THE PROPENSITIES
-    return [
-            # synthesis, degradation, dilution of burdensome synthetic gene mRNA
-            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
-            par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
-            l * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
-            # synthesis, degradation, dilution of cat gene mRNA
-            par['func_cat'] * l * F[name2pos['F_cat']] * par['c_cat'] * par['a_cat'] / mRNA_count_scales[name2pos['mscale_cat']],
-            par['b_cat'] * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            l * x[name2pos['m_cat']] / mRNA_count_scales[name2pos['mscale_cat']],
-            # synthesis, degradation, dilution of protease gene mRNA
-            par['func_prot'] * l * F[name2pos['F_prot']] * par['c_prot'] * par['a_prot'] / mRNA_count_scales[name2pos['mscale_prot']],
-            par['b_prot'] * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
-            l * x[name2pos['m_prot']] / mRNA_count_scales[name2pos['mscale_prot']],
-            #
-            # synthesis, degradation, dilution of burdensome synthetic gene protein
-            (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R,
-            par['d_b'] * p_prot * x[name2pos['p_b']],
-            l * x[name2pos['p_b']],
-            # synthesis, degradation, dilution of cat gene protein
-            (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R,
-            par['d_cat'] * p_prot * x[name2pos['p_cat']],
-            l * x[name2pos['p_cat']],
-            # synthesis, degradation, dilution of synthetic protease
-            (e / par['n_prot']) * (x[name2pos['m_prot']] / k_het[name2pos['k_prot']] / D) * R,
-            par['d_prot'] * p_prot * x[name2pos['p_prot']],
-            l * x[name2pos['p_prot']]
     ]
 
 
