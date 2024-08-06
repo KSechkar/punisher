@@ -30,10 +30,10 @@ def F_real_calc(p_switch, par):
 
 # required value
 def F_req_calc(p_switch, xi, par, cellvars):
-    return p_switch * (1 + cellvars['P_switch']) * \
+    return p_switch * (1 + cellvars['chi_switch']) * \
         xi / (cellvars['xi_switch_max'] + cellvars['xi_int_max']) / \
         (par['M'] * (1 - par['phi_q']) / par['n_switch'] * cellvars['xi_switch_max'] / (
-                cellvars['xi_switch_max'] + cellvars['xi_int_max']) - p_switch * (1 + cellvars['P_switch']))
+                cellvars['xi_switch_max'] + cellvars['xi_int_max']) - p_switch * (1 + cellvars['chi_switch']))
 
 
 # F_SWITCH FUNCTION GRADIENTS ------------------------------------------------------------------------------------------
@@ -48,9 +48,9 @@ def dFreal_dpswitch_calc(p_switch, par):
 # required value
 def dFreq_dpswitch_calc(p_switch, xi, par, cellvars):
     MQns = par['M'] * (1 - par['phi_q']) / par['n_switch']
-    return xi * (1+cellvars['P_switch']) * cellvars['xi_switch_max'] * MQns / (
+    return xi * (1+cellvars['chi_switch']) * cellvars['xi_switch_max'] * MQns / (
             cellvars['xi_switch_max'] * MQns -
-            p_switch * (1+cellvars['P_switch']) * (cellvars['xi_switch_max'] + cellvars['xi_int_max'])
+            p_switch * (1+cellvars['chi_switch']) * (cellvars['xi_switch_max'] + cellvars['xi_int_max'])
     ) ** 2
 
 # FINDING THE THRESHOLD BIFURCATION: PARAMETRIC APPROACH ---------------------------------------------------------------
@@ -86,9 +86,9 @@ def pswitch_from_F(F, par):
 
 # find the value of xi yielding a fixed point for given F_switch and p_switch values
 def xi_from_F_and_pswitch(F, p_switch, par, cellvars):
-    return F * (cellvars['xi_switch_max'] + cellvars['xi_int_max']) / (p_switch * (1 + cellvars['P_switch'])) * \
+    return F * (cellvars['xi_switch_max'] + cellvars['xi_int_max']) / (p_switch * (1 + cellvars['chi_switch'])) * \
         (par['M'] * (1 - par['phi_q']) / par['n_switch'] * cellvars['xi_switch_max'] / (
-                cellvars['xi_switch_max'] + cellvars['xi_int_max']) - p_switch * (1 + cellvars['P_switch']))
+                cellvars['xi_switch_max'] + cellvars['xi_int_max']) - p_switch * (1 + cellvars['chi_switch']))
 
 
 # just for convenience, can get a pair of xi and p_switch values
@@ -116,7 +116,7 @@ def validff_to_find_pswitch(p_switch,
 # upper bound for p_switch to find the non-saddle fixed point - for a given (threshold) value of xi
 def pswitch_upper_bound_4nonsaddle(xi,
                                    par, cellvars):
-    return 1 / (1 + cellvars['P_switch']) * \
+    return 1 / (1 + cellvars['chi_switch']) * \
         par['M'] * (1 - par['phi_q']) / par['n_switch'] * \
         cellvars['xi_switch_max'] / (cellvars['xi_switch_max'] + cellvars['xi_int_max'] + xi)
 
@@ -128,7 +128,7 @@ def pint_from_pswitch_and_xi(p_switch,
     # get the F value
     F = F_real_calc(p_switch, par)
 
-    return 1 / (1 + cellvars['P_int']) * \
+    return 1 / (1 + cellvars['chi_int']) * \
         par['M'] * (1 - par['phi_q']) / par['n_switch'] * \
         (F * cellvars['xi_int_max']) / (cellvars['xi_switch_max'] + cellvars['xi_int_max'] + xi)
 
@@ -220,7 +220,7 @@ def threshold_gfchanges(par, cellvars):
 def find_basin_border(par, cellvars):
 
     # greatest possible p_switch level - for zero extra burden so that it's max across all conditions
-    p_switch_upper_bound = jnp.ceil(cellvars['xi_switch_max'] * (1 / (1 + cellvars['P_switch'])) / (
+    p_switch_upper_bound = jnp.ceil(cellvars['xi_switch_max'] * (1 / (1 + cellvars['chi_switch'])) / (
             cellvars['xi_switch_max'] + cellvars['xi_int_max'] + cellvars['xi_prot'] + cellvars['xi_cat'] + cellvars[
         'xi_a'] + cellvars['xi_r']
     ) * par['M'] * (1 - par['phi_q']) / par['n_switch'])  # upper bound for p_switch (to get the high equilibrium)

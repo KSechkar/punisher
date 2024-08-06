@@ -1267,8 +1267,8 @@ def ode_sim(par,  # dictionary with model parameters
             x0,  # initial condition VECTOR
             num_circuit_genes, num_circuit_miscs, circuit_name2pos, sgp4j,
             # dictionaries with circuit gene and miscellaneous specie names, species name to vector position decoder, relevant synthetic gene parameters in jax.array form
-            tf, ts, rtol, atol
-            # simulation parameters: time frame, when to save the system's state, relative and absolute tolerances
+            tf, ts, rtol, atol,  # simulation parameters: time frame, when to save the system's state, relative and absolute tolerances
+            solver=Kvaerno3()  # ODE solver
             ):
     # define the ODE term
     vector_field = lambda t, y, args: ode_with_circuit(t, y, args)
@@ -1281,9 +1281,6 @@ def ode_sim(par,  # dictionary with model parameters
         num_circuit_genes, num_circuit_miscs,  # number of genes and miscellaneous species in the circuit
         sgp4j  # relevant synthetic gene parameters in jax.array form
     )
-
-    # define the solver
-    solver = Kvaerno3()
 
     # define the time points at which we save the solution
     stepsize_controller = PIDController(rtol=rtol, atol=atol)
