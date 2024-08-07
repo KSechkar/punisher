@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import jaxopt
 import functools
 import itertools
-from diffrax import diffeqsolve, Dopri5, ODETerm, SaveAt, PIDController, SteadyStateEvent
+from diffrax import diffeqsolve, Heun, ODETerm, SaveAt, PIDController, SteadyStateEvent
 from bokeh import plotting as bkplot, models as bkmodels, layouts as bklayouts, palettes as bkpalettes, transform as bktransform
 from math import pi
 import time
@@ -28,7 +28,7 @@ class PopulationSimulator:
                  transition_rates=None, # switch state transition rates
                  integrase_activities=None, # integrase activity
                  growth_rates=None, # growth rates in all states
-                 p_xtras=None, # burdensome protein concentrations
+                 p_bs=None, # burdensome protein concentrations
                  ):
         # dictionary: cell state descriptions vs position in array for ODE simulation
         # (0/1,0/1,0/1,0/1) - presence of functional burden, switch, integrase and CAT genes
@@ -93,13 +93,20 @@ class PopulationSimulator:
                 for state in self.cs2p[func].keys():
                     self.growth_rates[func][state] = 1
                     self.grv[self.cs2p[func][state]] = 1
+        # cell division rate dictionary and vector - growth rates divided by ln(2) to account for cell doubling times
+        self.division_rates = {}
+        for func in self.cs2p.keys():
+            self.division_rates[func] = {}
+            for state in self.cs2p[func].keys():
+                self.division_rates[func][state] = self.growth_rates[func][state]/np.log(2)
+        self.drv = self.grv/np.log(2)
 
         # burdensome protein concentrations - in  a vector
         self.pxv = np.zeros(self.num_css)
-        if(p_xtras!=None):
+        if(p_bs!=None):
             for func in self.cs2p.keys():
                 for state in self.cs2p[func].keys():
-                    self.pxv[self.cs2p[func][state]] = p_xtras[self.func2string[func]][state]
+                    self.pxv[self.cs2p[func][state]] = p_bs[self.func2string[func]][state]
         else:
             for func in self.cs2p.keys():
                 for state in self.cs2p[func].keys():
@@ -138,14 +145,14 @@ class PopulationSimulator:
 
     # FILLING MATRICES
     # all in format [to,from]
-    # fill the matrix of cell division rates
+    # fill the matrix of cell division rates = growth rates/ln(2)
     def fill_division_matrix(self):
         # initialise the division rate matrix
         drm=np.zeros((self.num_css,self.num_css))
         # just get a diagonal matrix with the growth rate of a given mutation-switch cell state
         for func in self.cs2p.keys():
             for state in self.cs2p[func].keys():
-                drm[self.cs2p[func][state], self.cs2p[func][state]] = self.growth_rates[func][state]
+                drm[self.cs2p[func][state], self.cs2p[func][state]] = self.division_rates[func][state]
         return drm
 
     # fill the matrix of birth rates of cells in different states
@@ -216,9 +223,9 @@ class PopulationSimulator:
                 # according to mutation probabilities, calculate the birth rates
                 # new mutant children being born
                 for descendant in mpm[func]:
-                    brm[self.cs2p[descendant][state],self.cs2p[func][state]]=2*self.growth_rates[func][state]*mrm[self.cs2p[descendant][state],self.cs2p[func][state]]
+                    brm[self.cs2p[descendant][state],self.cs2p[func][state]]=2*self.division_rates[func][state]*mrm[self.cs2p[descendant][state],self.cs2p[func][state]]
                 # unmutated cell being born
-                brm[self.cs2p[func][state],self.cs2p[func][state]]=2*self.growth_rates[func][state]*(1-np.sum(mrm[:,self.cs2p[func][state]]))
+                brm[self.cs2p[func][state],self.cs2p[func][state]]=2*self.division_rates[func][state]*(1-np.sum(mrm[:,self.cs2p[func][state]]))
 
         return brm
 
@@ -259,20 +266,20 @@ class PopulationSimulator:
 
     # ANALYSING TRAJECTORIES -------------------------------------------------------------------------------------------
     # TOTAL abundance of all cells with the burden gene present
-    def all_with_xtra(self, ts, xs):
-        N_with_xtra = np.zeros_like(ts)
+    def all_with_b(self, ts, xs):
+        N_with_b = np.zeros_like(ts)
         for func in self.cs2p.keys():
             if (func[0] == 1):
                 for state in self.cs2p[func].keys():
-                    N_with_xtra += xs[:, self.cs2p[func][state]]
-        return N_with_xtra
+                    N_with_b += xs[:, self.cs2p[func][state]]
+        return N_with_b
 
     # per-cell average synthesis rate of the burdensome protein - see Ingram and Stan 2023
     def percell_avg_synth_rate(self,
                                ts, xs
                                ):
         # get the syntesis rate unscaled by population size
-        Hrates_unscaled = np.sum(np.multiply(np.multiply(self.pxv,self.grv),xs)/np.log(2),axis=1)
+        Hrates_unscaled = np.sum(np.multiply(np.multiply(self.pxv,self.drv),xs),axis=1)
         # for func in self.cs2p.keys():
         #     if(func[0]==1 and func[3]==1): # both burdensome and CAT genes present
         #         for state in self.cs2p[func].keys():
@@ -326,8 +333,8 @@ class PopulationSimulator:
         func_figure = bkplot.figure(
             frame_width=dimensions[0],
             frame_height=dimensions[1],
-            x_axis_label="Time, h",
-            y_axis_label="Number of cells",
+            x_axis_label="Time since start of culture, h",
+            y_axis_label="Number of cells in genetic state",
             x_range=tspan,
             title='Number of cells',
             tools="box_zoom,pan,hover,reset,save"
@@ -425,9 +432,9 @@ class PopulationSimulator:
             tspan = (ts1[0], ts1[-1])
 
         # get trajectories for plotting
-        N_with_xtra1 = self.all_with_xtra(ts1, xs1)
+        N_with_b1 = self.all_with_b(ts1, xs1)
         if(label2!=None):
-            N_with_xtra2 = self.all_with_xtra(ts2, xs2)
+            N_with_b2 = self.all_with_b(ts2, xs2)
         # PLOT
         burden_figure = bkplot.figure(
             frame_width=dimensions[0],
@@ -439,12 +446,12 @@ class PopulationSimulator:
             tools="box_zoom,pan,hover,reset,save"
         )
         # plot first trajectory
-        burden_figure.line(ts1, N_with_xtra1,
+        burden_figure.line(ts1, N_with_b1,
                            legend_label=label1,
                            line_width=2, line_color='blue')
         # plot second trajectory if specified
         if(label2!=None):
-            burden_figure.line(ts2, N_with_xtra2,
+            burden_figure.line(ts2, N_with_b2,
                                legend_label=label2,
                                line_width=2, line_color='red')
         # format legend
@@ -573,7 +580,7 @@ class PopulationSimulator:
             tspan = (ts[0], ts[-1])
 
         # get the dilution rate
-        dilution_rate = np.divide(np.sum(np.multiply(self.grv,xs),axis=1),np.sum(xs,axis=1))
+        dilution_rate = np.divide(np.sum(np.multiply(self.drv,xs),axis=1),np.sum(xs,axis=1))
 
         # PLOT
         dilution_figure = bkplot.figure(
@@ -608,7 +615,7 @@ def pop_ode_sim(
 
     # define arguments of the ODE term
     args = (
-        jnp.array(pop_sim.grv), # growth rates vector
+        jnp.array(pop_sim.drv), # division rates vector
         jnp.array(pop_sim.drm), # division rate matrix
         jnp.array(pop_sim.brm), # birth rate matrix
         jnp.array(pop_sim.trm), # transition rate matrix
@@ -616,7 +623,7 @@ def pop_ode_sim(
     )
 
     # define the solver
-    solver = Kvaerno3()
+    solver = Heun()
 
     # define the time points at which we save the solution
     stepsize_controller = PIDController(rtol=rtol, atol=atol)
@@ -637,13 +644,13 @@ def pop_ode_sim(
 @jax.jit
 def pop_ode(t,x,args):
     # unpack arguments
-    grv=args[0]
+    drv=args[0]
     drm=args[1]
     brm=args[2]
     trm=args[3]
     irm=args[4]
 
-    dilution_rate=jnp.dot(x,grv)/np.sum(x) # find the dilution rate
+    dilution_rate=jnp.dot(x,drv)/np.sum(x) # find the dilution rate
 
     dxdt=(
         # cells divide
