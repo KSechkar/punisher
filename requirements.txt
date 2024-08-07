@@ -1,0 +1,6 @@
+numpy~=1.26.4
+jax~=0.4.23
+jaxopt~=0.8.3
+pandas~=2.1.4
+diffrax~=0.5.0
+bokeh~=3.4.0
