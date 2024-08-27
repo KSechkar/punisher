@@ -104,7 +104,7 @@ def pswitch_inflexion_in_Freal(par):
                 par['K_switch'] / par['p_switch_ac_frac'])
 
 
-# FINDING THE GUARANTEED CHANGE IN P_INT EXPRESSION --------------------------------------------------------------------
+# FINDING THE MINIMUM CHANGE IN P_INT EXPRESSION --------------------------------------------------------------------
 # find the difference of values between the real and required F_switch values
 # (used for optimisation in terms of p_switch)
 def validff_to_find_pswitch(p_switch,
@@ -163,9 +163,9 @@ def check_if_threshold_exists(par, cellvars):
     return gradiff_from_pswitch(p_switch_inflexion, par, cellvars) > 0 # TRUE <=> threshold exists
 
 
-# FIND THRESHOLD AND GUARANTEED FOLD EXPRESSION CHANGES ----------------------------------------------------------------
-# find the threshold and guaranteed fold expression changes for a given set of parameters
-def threshold_gfchanges(par, cellvars):
+# FIND THRESHOLD AND MINIMUM FOLD EXPRESSION CHANGES ----------------------------------------------------------------
+# find the threshold and minimum fold expression changes for a given set of parameters
+def threshold_mfchanges(par, cellvars):
     pswitch_inflexion = pswitch_inflexion_in_Freal(
         par)  # upper bound of feasible region for p_switch (inflexion point in real F_switch)
     F_upper_bound = F_real_calc(pswitch_inflexion, par)  # upper bound of feasible region for F
@@ -185,7 +185,7 @@ def threshold_gfchanges(par, cellvars):
     xi_threshold = xi_from_F_and_pswitch(F_threshold,p_switch_threshold,par,cellvars)
 
 
-    # FIND THE GUARANTEED CHANGE IN INTEGRASE PROTEIN EXPRESSION -------------------------------------------------------
+    # FIND THE MINIMUM CHANGE IN INTEGRASE PROTEIN EXPRESSION -------------------------------------------------------
     # find the non-saddle fixed point for the threshold xi value
     p_switch_sup = pswitch_upper_bound_4nonsaddle(xi_threshold, par,
                                                   cellvars)  # supremum of biologically possible p_switch values for a given xi
@@ -201,18 +201,18 @@ def threshold_gfchanges(par, cellvars):
     p_int_saddle = pint_from_pswitch_and_xi(p_switch_threshold, xi_threshold, par, cellvars)
     p_int_nonsaddle = pint_from_pswitch_and_xi(p_switch_nonsaddle, xi_threshold, par, cellvars)
 
-    # find the guaranteed fold-change in integrase protein expression
-    gfchange_int = p_int_nonsaddle / p_int_saddle
+    # find the minimum fold-change in integrase protein expression
+    mfchange_int = p_int_nonsaddle / p_int_saddle
 
-    # find the guaranteed fold-change in F value (just as an extra)
-    gfchange_F = F_real_calc(p_switch_nonsaddle, par) / F_threshold
+    # find the minimum fold-change in F value (just as an extra)
+    mfchange_F = F_real_calc(p_switch_nonsaddle, par) / F_threshold
 
-    # find the guaranteed fold-change in integrase activity
+    # find the minimum fold-change in integrase activity
     intact_saddle = (p_int_saddle/par['K_bI~'])**4/ (1+(p_int_saddle/par['K_bI~'])**4)
     intact_nonsaddle = (p_int_nonsaddle/par['K_bI~'])**4/ (1+(p_int_nonsaddle/par['K_bI~'])**4)
-    gfchange_intact = intact_nonsaddle/intact_saddle
+    mfchange_intact = intact_nonsaddle/intact_saddle
 
-    return jnp.array([p_switch_threshold, xi_threshold, gfchange_int, gfchange_F, gfchange_intact])
+    return jnp.array([p_switch_threshold, xi_threshold, mfchange_int, mfchange_F, mfchange_intact])
 
 
 # FIND THE PUNISHER'S BOUNDARY BETWEEN THE STABLE EQUILIBRIA'S BASIONS OF ATTRACTION -----------------------------------

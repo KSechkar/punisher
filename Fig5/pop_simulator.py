@@ -3,6 +3,11 @@ POP_SIMULATOR.PY: a class for simulating populations of cells with the punisher 
 '''
 # By Kirill Sechkar
 
+# NOTE: As opposed to the notation used in the paper, here we maintain a "one gene functionality=one character" rule,
+# so that the strings describing gene functionalities are always a consistent length, which simplifies the code.
+# Thus, a non-functional gene "G" is denoted by "O" in its place, rather than "G". For example, the cells with
+# all genes functional, save for the mutated burdensome gene B, are denoted as "B'SPC" in the paper and as "OSPC" here.
+
 # PACKAGE IMPORTS ------------------------------------------------------------------------------------------------------
 import numpy as np
 import jax
@@ -44,6 +49,9 @@ class PopulationSimulator:
 
         # match tuples describing gene functionalities to character strings
         self.func2string, self.string2func=self.fill_func2string_and_string2func()
+
+        # get legend labels - in the code style and in the paper style (see the NOTE above)
+        self.legend_labels=self.make_legend_labels()
 
         # mutation rates (per 1/h growth rate)
         if(mutation_rates!=None):
@@ -142,6 +150,17 @@ class PopulationSimulator:
             string2func[func2string[func]]=func
 
         return func2string, string2func
+
+    # get legend labels - in the code style and in the paper style (see the NOTE above)
+    def make_legend_labels(self):
+        legend_labels={'code':self.func2string, 'paper':{}}
+        for func in self.cs2p.keys():
+            legend_labels['paper'][func]=''
+            for gene in range(0,len(func)):
+                legend_labels['paper'][func]+='BSPC'[gene]
+                if(func[gene]==0):
+                    legend_labels['paper'][func]+='\''
+        return legend_labels
 
     # FILLING MATRICES
     # all in format [to,from]
@@ -315,7 +334,8 @@ class PopulationSimulator:
     def plot_funcstates(self,
                         ts, xs,
                         dimensions=(640, 360),
-                        tspan=None):
+                        tspan=None,
+                        legend_label_style='code'):
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
@@ -343,7 +363,7 @@ class PopulationSimulator:
         line_cntr = 0
         for func in self.cs2p.keys():
             func_figure.line(ts, data[self.func2string[func]],
-                             legend_label=self.func2string[func],
+                             legend_label=self.legend_labels[legend_label_style][func],
                              line_width=2, line_color=palette[line_cntr])
             line_cntr += 1
 
@@ -364,7 +384,8 @@ class PopulationSimulator:
                                 ts, xs,
                                 func,
                                 dimensions=(640, 360),
-                                tspan=None):
+                                tspan=None,
+                                legend_label_style='code'):
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
@@ -387,7 +408,7 @@ class PopulationSimulator:
             x_axis_label="Time, h",
             y_axis_label="Number of cells",
             x_range=tspan,
-            title='Switch states of '+self.func2string[func]+' cells',
+            title='Switch states of '+self.legend_labels[legend_label_style][func]+' cells',
             tools="box_zoom,pan,hover,reset"
         )
         # plot high state
