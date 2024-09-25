@@ -53,6 +53,11 @@ def nocircuit_v(F_calc,     # calculating the transcription regulation functions
     # RETURN THE PROPENSITIES
     return []
 
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def nocircuit_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                  e, k_het):
+    return 0
 
 
 # ONE CONSTITUTIVE GENE [tau-leap compatible]---------------------------------------------------------------------------
@@ -185,6 +190,16 @@ def oneconstitutive_v(F_calc,     # calculating the transcription regulation fun
             l * x[name2pos['p_b']]
     ]
 
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def oneconstitutive_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                  e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, no correction as no co-expression
+    return m_het_div_k_het_uncorr
+
 # ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE -------------------------------------------------------------------
 # initialise all the necessary parameters to simulate the circuit
 def oneconstitutive_cat_initialise():
@@ -290,6 +305,17 @@ def oneconstitutive_cat_ode(F_calc,     # calculating the transcription regulati
             (e / par['n_b']) * (x[name2pos['m_b']] / k_het[name2pos['k_b']] / D) * R - (l + par['d_b']*p_prot) * x[name2pos['p_b']],
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']]
     ]
+
+
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def oneconstitutive_cat_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                        e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, no correction as no co-expression
+    return m_het_div_k_het_uncorr
 
 # ONE CONSTITUTIVE GENE + CHLORAMPHENICOL RESISTANCE + SYNTHETIC PROTEASE ----------------------------------------------
 # initialise all the necessary parameters to simulate the circuit
@@ -399,6 +425,17 @@ def oneconstitutive_cat_prot_ode(F_calc,     # calculating the transcription reg
             (e / par['n_cat']) * (x[name2pos['m_cat']] / k_het[name2pos['k_cat']] / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
             (e / par['n_prot']) * (x[name2pos['m_prot']] / k_het[name2pos['k_prot']] / D) * R - (l + par['d_prot']*p_prot) * x[name2pos['p_prot']]
     ]
+
+
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def oneconstitutive_cat_prot_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                        e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, no correction as no co-expression
+    return m_het_div_k_het_uncorr
 
 
 # PUNISHER AND A SINGLE BURDENSOME GENE [tau-leap compatible, includes a synthetic protease]----------------------------
@@ -642,6 +679,19 @@ def punisher_b_v(F_calc,     # calculating the transcription regulation function
         ]
 
 
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def punisher_b_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                    e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, add the value for the integrase co-expressed with the switch gene
+    k_int = (par['k-_int'] + e / par['n_int']) / par['k+_int']
+    m_int = x[name2pos['m_switch']]*par['n_int']/par['n_switch']
+    return m_het_div_k_het_uncorr + m_int / k_int
+
+
 # PUNISHER - WITH SWITCH PROT. AND INTEGRASE EXPRESSED SEPARATELY - AND A SINGLE BURDENSOME GENE [tau-leap compatible]--
 def punisher_sep_b_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
@@ -877,6 +927,16 @@ def punisher_sep_b_v(F_calc,     # calculating the transcription regulation func
         ]
 
 
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def punisher_sep_b_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                        e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, no correction as no co-expression
+    return m_het_div_k_het_uncorr
+
 # PUNISHER WITH TWO TOGGLE SWITCHES ------------------------------------------------------------------------------------
 def twotoggles_punisher_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
@@ -1087,6 +1147,19 @@ def twotoggles_punisher_ode(F_calc,     # calculating the transcription regulati
                 -par['k_+syn'] * x[name2pos['cat_lri1']] - l*x[name2pos['cat_lri1']]) # no replenishment from LRI2/LR as strands diffuse away
     ]
 
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def twotoggles_punisher_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                    e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, add the value for the integrase co-expressed with the switch gene
+    k_int = (par['k-_int'] + e / par['n_int']) / par['k+_int']
+    m_int = x[name2pos['m_switch']]*par['n_int']/par['n_switch']
+    return m_het_div_k_het_uncorr + m_int / k_int
+
+
 # TWO TOGGLE SWITCHES ONLY----------------------------------------------------------------------------------------------
 def twotoggles_only_initialise():
     # -------- SPECIFY CIRCUIT COMPONENTS FROM HERE...
@@ -1234,6 +1307,17 @@ def twotoggles_only_ode(F_calc,     # calculating the transcription regulation f
             (e / par['n_tog21']) * (x[name2pos['m_tog21']] / k_het[name2pos['k_tog21']] / D) * R - (l + par['d_tog21']*p_prot) * x[name2pos['p_tog21']],
             (e / par['n_tog22']) * (x[name2pos['m_tog22']] / k_het[name2pos['k_tog22']] / D) * R - (l + par['d_tog22']*p_prot) * x[name2pos['p_tog22']],
     ]
+
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def twotoggles_only_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                    e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, no correction needed
+    return m_het_div_k_het_uncorr
+
 
 # TWO TOGGLE SWITCHES WITH SYNTHETIC ADDICTION -------------------------------------------------------------------------
 def twotoggles_add_initialise():
@@ -1418,3 +1502,22 @@ def twotoggles_add_ode(F_calc,     # calculating the transcription regulation fu
             (e / par['n_tog22']) * (x[name2pos['m_tog22']] / k_het[name2pos['k_tog22']] / D) * R - (l + par['d_tog22']*p_prot) * x[name2pos['p_tog22']],
             (e / par['n_cat']) * (mcat_div_kcat_total / D) * R - (l + par['d_cat']*p_prot) * x[name2pos['p_cat']],
     ]
+
+# effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
+# corrected for genes expressed from the same operon with some others
+def twotoggles_add_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+                                    e, k_het):
+    # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
+    m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+
+    # return the corrected value: here, add the values for the CAT gene co-expressed with toggle genes
+    m_cat11 = x[name2pos['m_tog11']] * par['n_cat'] / par['n_tog11']
+    m_cat12 = x[name2pos['m_tog12']] * par['n_cat'] / par['n_tog12']
+    m_cat21 = x[name2pos['m_tog21']] * par['n_cat'] / par['n_tog21']
+    m_cat22 = x[name2pos['m_tog22']] * par['n_cat'] / par['n_tog22']
+    k_cat11 = (par['k-_cat11'] + e / par['n_cat']) / par['k+_cat11']
+    k_cat12 = (par['k-_cat12'] + e / par['n_cat']) / par['k+_cat12']
+    k_cat21 = (par['k-_cat21'] + e / par['n_cat']) / par['k+_cat21']
+    k_cat22 = (par['k-_cat22'] + e / par['n_cat']) / par['k+_cat22']
+    mcat_div_kcat_total = m_cat11 / k_cat11 + m_cat12 / k_cat12 + m_cat21 / k_cat21 + m_cat22 / k_cat22
+    return m_het_div_k_het_uncorr + mcat_div_kcat_total

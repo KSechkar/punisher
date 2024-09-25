@@ -72,6 +72,7 @@ class CellModelAuxiliary:
                     circuit_initialiser,  # function initialising the circuit
                     circuit_ode,  # function defining the circuit ODEs
                     circuit_F_calc,  # function calculating the circuit genes' transcription regulation functions
+                    circuit_eff_m_het_div_k_het,    # function calculating the effective total mRNA/k for all synthetic genes
                     cellmodel_par, cellmodel_init_conds,  # host cell model parameters and initial conditions
                     # optional support for hybrid simulations
                     circuit_v=None
@@ -99,11 +100,12 @@ class CellModelAuxiliary:
             circuit_v_with_F_calc = None
 
         # add the ciorcuit ODEs to that of the host cell model
-        cellmodel_ode = lambda t, x, args: ode(t, x, circuit_ode_with_F_calc, args)
+        cellmodel_ode = lambda t, x, args: ode(t, x, circuit_ode_with_F_calc, circuit_eff_m_het_div_k_het, args)
 
         # return updated ode and parameter, initial conditions, circuit gene (and miscellaneous specie) names
         # name - position in state vector decoder and colours for plotting the circuit's time evolution
-        return cellmodel_ode, circuit_F_calc, cellmodel_par, cellmodel_init_conds, circuit_genes, circuit_miscs, circuit_name2pos, circuit_styles, circuit_v_with_F_calc
+        return cellmodel_ode, circuit_F_calc, circuit_eff_m_het_div_k_het,\
+            cellmodel_par, cellmodel_init_conds, circuit_genes, circuit_miscs, circuit_name2pos, circuit_styles, circuit_v_with_F_calc
 
     # package synthetic gene parameters into jax arrays for calculating k values
     def synth_gene_params_for_jax(self, par,  # system parameters
@@ -532,6 +534,7 @@ class CellModelAuxiliary:
     # plot physiological variables: growth rate, translation elongation rate, ribosomal gene transcription regulation function, ppGpp concentration, tRNA charging rate, RC denominator
     def plot_phys_variables(self, ts, xs,
                             par, circuit_genes, circuit_miscs, circuit_name2pos,
+                            circuit_eff_m_het_div_k_het,
                             # model parameters, list of circuit genes and miscellaneous species, and dictionary mapping gene names to their positions in the state vector
                             dimensions=(320, 180), tspan=None):
         # set default time span if unspecified
@@ -540,7 +543,7 @@ class CellModelAuxiliary:
 
         # get cell variables' values over time
         e, l, F_r, nu, _, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xs, par, circuit_genes, circuit_miscs,
-                                                                            circuit_name2pos)
+                                                                            circuit_name2pos, circuit_eff_m_het_div_k_het)
 
         # Create a ColumnDataSource object for the plot
         data_for_column = {'t': np.array(ts), 'e': np.array(e), 'l': np.array(l), 'F_r': np.array(F_r),
@@ -645,7 +648,8 @@ class CellModelAuxiliary:
 
     # find values of different cellular variables
     def get_e_l_Fr_nu_psi_T_D_Dnodeg(self, t, x,
-                                     par, circuit_genes, circuit_miscs, circuit_name2pos):
+                                     par, circuit_genes, circuit_miscs, circuit_name2pos,
+                                     circuit_eff_m_het_div_k_het):
         # give the state vector entries meaningful names
         m_a = x[:, 0]  # metabolic gene mRNA
         m_r = x[:, 1]  # ribosomal gene mRNA
@@ -687,7 +691,10 @@ class CellModelAuxiliary:
         H = (par['K_D'] + h) / par['K_D']
 
         # heterologous mRNA levels scaled by RBS strength
-        m_het_div_k_het = jnp.sum(x[:, 8:8 + len(circuit_genes)] / k_het, axis=1)  # heterologous protein synthesis flux
+        m_het_div_k_het_np=np.zeros(t.shape)
+        for i in range(0,len(t)):
+            m_het_div_k_het_np[i] = circuit_eff_m_het_div_k_het(x[i, :], par, circuit_name2pos, len(circuit_genes), e[i], k_het[i,:])
+        m_het_div_k_het = jnp.array(m_het_div_k_het_np)
 
         # heterologous protein degradation flux
         prodeflux = jnp.multiply(
@@ -1076,8 +1083,8 @@ class CellModelAuxiliary:
 
     # plot physiological variables: growth rate, translation elongation rate, ribosomal gene transcription regulation function, ppGpp concentration, tRNA charging rate, RC denominator
     def plot_phys_variables_multiple(self, ts, xss,
-                            par, circuit_genes, circuit_miscs, circuit_name2pos,
-                            # model parameters, list of circuit genes and miscellaneous species, and dictionary mapping gene names to their positions in the state vector
+                            par, circuit_genes, circuit_miscs, circuit_name2pos,    # model parameters, list of circuit genes and miscellaneous species, and dictionary mapping gene names to their positions in the state vector
+                            circuit_eff_m_het_div_k_het,  # function calculating the total effective mRNA conc./k value for all heterologous genes
                             dimensions=(320, 180), tspan=None,
                             simtraj_alpha=0.1):
         # if no circuitry at all, return no plots
@@ -1092,7 +1099,8 @@ class CellModelAuxiliary:
         sources = {}
         for i in range(0,len(xss)):
             e, l, F_r, nu, psi, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xss[i, :, :],
-                                                                                    par, circuit_genes, circuit_miscs, circuit_name2pos)
+                                                                                    par, circuit_genes, circuit_miscs, circuit_name2pos,
+                                                                                  circuit_eff_m_het_div_k_het)
             # Create a ColumnDataSource object for the plot
             sources[i] = bkmodels.ColumnDataSource(data={
                 't': np.array(ts),
@@ -1298,7 +1306,9 @@ def ode_sim(par,  # dictionary with model parameters
 
 
 # ode
-def ode(t, x, circuit_ode, args):
+def ode(t, x,
+        circuit_ode, circuit_eff_m_het_div_k_het,
+        args):
     # unpack the args
     par = args[0]  # model parameters
     circuit_name2pos = args[1]  # gene name - position in circuit vector decoder
@@ -1337,11 +1347,8 @@ def ode(t, x, circuit_ode, args):
 
     H = (par['K_D'] + h) / par['K_D']  # corection to ribosome availability due to chloramphenicol action
 
-
-    m_het_div_k_het = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
-
     # heterologous mRNA levels scaled by RBS strength
-    m_het_div_k_het = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+    m_het_div_k_het = circuit_eff_m_het_div_k_het(x, par, circuit_name2pos, num_circuit_genes, e, k_het)
 
     # heterologous protein degradation flux
     prodeflux = jnp.sum(
@@ -1390,6 +1397,7 @@ def ode(t, x, circuit_ode, args):
 # TAU-LEAPING SIMULATION -----------------------------------------------------------------------------------------------
 def tauleap_sim(par,  # dictionary with model parameters
                 circuit_v,  # calculating the propensity vector for stochastic simulation of circuit expression
+                circuit_eff_m_het_div_k_het,  # calculating the effective mRNA/k values for the synthetic genes in the circuit
                 x0,  # initial condition VECTOR
                 num_circuit_genes, num_circuit_miscs, circuit_name2pos, # dictionaries with circuit gene and miscellaneous specie names, species name to vector position decoder,
                 sgp4j, # relevant synthetic gene parameters in jax.array form
@@ -1413,7 +1421,9 @@ def tauleap_sim(par,  # dictionary with model parameters
     ode_steps_in_tau = int(tau / tau_odestep)
 
     # make the retrieval of next x a lambda-function for jax.lax.scanning
-    scan_step = lambda sim_state, t: tauleap_record_x(circuit_v, sim_state, t, tau, ode_steps_in_tau, args)
+    scan_step = lambda sim_state, t: tauleap_record_x(circuit_v, circuit_eff_m_het_div_k_het,
+                                                      sim_state, t, tau, ode_steps_in_tau,
+                                                      args)
 
     # define the jac.lax.scan function
     tauleap_scan = lambda sim_state_rec0, ts: jax.lax.scan(scan_step, sim_state_rec0, ts)
@@ -1449,19 +1459,22 @@ def tauleap_sim(par,  # dictionary with model parameters
 
 # log the next trajectory point
 def tauleap_record_x(circuit_v, # calculating the propensity vector for stochastic simulation of circuit expression
+                     circuit_eff_m_het_div_k_het, # calculating the effective mRNA/k values for the synthetic genes in the circuit
                      sim_state_record,  # simulator state
                      t,  # time of last record
                      tau,  # time step
                      ode_steps_in_tau,  # number of ODE integration steps in each tau-leap step
                      args):
     # DEFINITION OF THE ACTUAL TAU-LEAP SIMULATION STEP
-    def tauleap_next_x(step_cntr,sim_state_tauleap):
+    def tauleap_next_x(step_cntr, sim_state_tauleap):
         # update t
         next_t = sim_state_tauleap['t'] + tau
 
         # update x
         # find deterministic change in x
-        det_update = tauleap_integrate_ode(sim_state_tauleap['t'], sim_state_tauleap['x'], tau, ode_steps_in_tau, args)
+        det_update = tauleap_integrate_ode(sim_state_tauleap['t'], sim_state_tauleap['x'], tau, ode_steps_in_tau,
+                                           circuit_eff_m_het_div_k_het,
+                                           args)
         # find stochastic change in x
         stoch_update = tauleap_update_stochastically(sim_state_tauleap['t'], sim_state_tauleap['x'],
                                                      tau, args, circuit_v,
@@ -1505,7 +1518,9 @@ def tauleap_record_x(circuit_v, # calculating the propensity vector for stochast
 
 
 # ode integration - Euler method
-def tauleap_integrate_ode(t, x, tau, ode_steps_in_tau, args):
+def tauleap_integrate_ode(t, x, tau, ode_steps_in_tau,
+                          circuit_eff_m_het_div_k_het,
+                          args):
     # def euler_step(ode_step, x):
     #     return x + tauleap_ode(t + ode_step_size * ode_step, x, args) * ode_step_size
     #
@@ -1514,11 +1529,11 @@ def tauleap_integrate_ode(t, x, tau, ode_steps_in_tau, args):
     # x_new= jax.lax.fori_loop(0, ode_steps_in_tau, euler_step, x)
     #
     # return x_new - x
-    return tauleap_ode(t, x, args) * tau
+    return tauleap_ode(t, x, circuit_eff_m_het_div_k_het, args) * tau
 
 
 # ode for the deterministic part of the tau-leaping simulation
-def tauleap_ode(t, x, args):
+def tauleap_ode(t, x, circuit_eff_m_het_div_k_het, args):
     # unpack the args
     par = args[0]  # model parameters
     circuit_name2pos = args[1]  # gene name - position in circuit vector decoder
@@ -1560,7 +1575,7 @@ def tauleap_ode(t, x, args):
     H = (par['K_D'] + h) / par['K_D']
 
     # heterologous mRNA levels scaled by RBS strength
-    m_het_div_k_het = jnp.sum(x[8:8 + num_circuit_genes] / k_het)
+    m_het_div_k_het = circuit_eff_m_het_div_k_het(x, par, circuit_name2pos, num_circuit_genes, e, k_het)
 
     # heterologous protein degradation flux
     prodeflux = jnp.sum(
@@ -1952,13 +1967,15 @@ def main():
     init_conds = cellmodel_auxil.default_init_conds(par)  # get default initial conditions
 
     # load synthetic gene circuit - WITH HYBRID SIMULATION SUPPORT
-    ode_with_circuit, circuit_F_calc, par, init_conds, circuit_genes, circuit_miscs, circuit_name2pos, circuit_styles, circuit_v = cellmodel_auxil.add_circuit(
-        circuits.oneconstitutive_cat_initialise,
-        circuits.oneconstitutive_cat_ode,
-        circuits.oneconstitutive_cat_F_calc,
+    ode_with_circuit, circuit_F_calc, circuit_eff_m_het_div_k_het, \
+        par, init_conds, circuit_genes, circuit_miscs, circuit_name2pos, circuit_styles, circuit_v = cellmodel_auxil.add_circuit(
+        circuits.oneconstitutive_initialise,
+        circuits.oneconstitutive_ode,
+        circuits.oneconstitutive_F_calc,
+        circuits.oneconstitutive_cat_m_het_div_k_het,
         par, init_conds,
         # propensity calculation function for hybrid simulations
-        circuits.oneconstitutive_cat_v)
+        circuits.oneconstitutive_v)
 
     # burdensome gene
     par['c_xtra'] = 100.0
@@ -2013,10 +2030,11 @@ def main():
     xs = np.array(sol.ys)
     # det_steady_x = jnp.concatenate((sol.ys[-1, 0:8], jnp.round(sol.ys[-1, 8:])))
     det_steady_x = sol.ys[-1, :]
+    print(1)
 
     # HYBRID SIMULATION
     # tau-leap hybrid simulation parameters
-    tf_hybrid = (tf[-1], tf[-1] + 1)  # simulation time frame
+    tf_hybrid = (tf[-1], tf[-1] + 0.1)  # simulation time frame
     tau = 1e-7  # simulation time step
     tau_odestep = 1e-7  # number of ODE integration steps in a single tau-leap step (smaller than tau)
     tau_savetimestep = 1e-2  # save time step a multiple of tau
@@ -2029,6 +2047,7 @@ def main():
                                                                                         key_seeds=[0, 1, 2, 3, 4, 5, 6, 7, 8 ,9])
     ts_jnp, xs_jnp, final_keys = tauleap_sim(par,  # dictionary with model parameters
                                  circuit_v,  # circuit reaction propensity calculator
+                                 circuit_eff_m_het_div_k_het,
                                  x0_tauleap, # initial condition VECTOR (processed to make sure random variables are appropriate integers)
                                  len(circuit_genes), len(circuit_miscs), circuit_name2pos,
                                  cellmodel_auxil.synth_gene_params_for_jax(par, circuit_genes), # synthetic gene parameters for calculating k values
@@ -2055,6 +2074,7 @@ def main():
                                                                                                            circuit_genes,
                                                                                                            circuit_miscs,
                                                                                                            circuit_name2pos,
+                                                                                                           circuit_eff_m_het_div_k_het,
                                                                                                            tspan=(tf[-1] - (tf_hybrid[-1] -tf_hybrid[0]),tf_hybrid[-1]),
                                                                                                         simtraj_alpha=0.1)  # plot simulation results
     bkplot.save(bklayouts.grid([[None, nat_mrna_fig, nat_prot_fig],
