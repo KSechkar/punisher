@@ -59,7 +59,7 @@ def xi_calc(func,F,c,a,k):
     return func*F*c*a/k
 
 # auxiliary: protease action adjustment factor for a gene
-def P_calc(d_gene,
+def chi_calc(d_gene,
            e, h, par, xi_prot, xi_r):
     return ((par['K_D'] + h) / par['K_D']) *\
         d_gene * par['M']/e *\
@@ -156,14 +156,14 @@ def values_for_analytical(par,  # dictionary with model parameters
     xis={'a':xi_a, 'r':xi_r, 'cat':xi_cat, 'switch (max)':xi_switch_max, 'int (max)':xi_int_max, 'prot':xi_prot, 'other':xi_other_genes}
 
     # protein degradation adjustment factor
-    P_switch = P_calc(par['d_switch'],e,h,par,xi_prot,xi_r)
-    P_int = P_calc(par['d_int'],e,h,par,xi_prot,xi_r)
+    chi_switch = chi_calc(par['d_switch'],e,h,par,xi_prot,xi_r)
+    chi_int = chi_calc(par['d_int'],e,h,par,xi_prot,xi_r)
 
     # package all adjustment factors into a dictionary
-    Ps={'switch':P_switch, 'int':P_int}
+    chis={'switch':chi_switch, 'int':chi_int}
 
     # return
-    return e, F_r, h, xis, Ps
+    return e, F_r, h, xis, chis
 
 # get the steady state values - for the case when the switch prot. and integrase expressed from separate operons
 def values_for_analytical_sep(par,  # dictionary with model parameters
@@ -256,11 +256,11 @@ def values_for_analytical_sep(par,  # dictionary with model parameters
     xis={'a':xi_a, 'r':xi_r, 'cat':xi_cat, 'switch (max)':xi_switch_max, 'int (max)':xi_int_max, 'prot':xi_prot, 'other':xi_other_genes}
 
     # protein degradation adjustment factor
-    P_switch = P_calc(par['d_switch'],e,h,par,xi_prot,xi_r)
-    P_int = P_calc(par['d_int'],e,h,par,xi_prot,xi_r)
+    chi_switch = chi_calc(par['d_switch'],e,h,par,xi_prot,xi_r)
+    chi_int = chi_calc(par['d_int'],e,h,par,xi_prot,xi_r)
 
     # package all adjustment factors into a dictionary
-    Ps={'switch':P_switch, 'int':P_int}
+    chis={'switch':chi_switch, 'int':chi_int}
 
     # return
-    return e, F_r, h, xis, Ps
+    return e, F_r, h, xis, chis
