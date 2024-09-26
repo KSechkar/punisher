@@ -1505,7 +1505,7 @@ def twotoggles_add_ode(F_calc,     # calculating the transcription regulation fu
 
 # effective mRNA concentrations divided by ribosome-mRNA dissoc. consts,
 # corrected for genes expressed from the same operon with some others
-def twotoggles_add_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
+def twotoggles_add_eff_m_het_div_k_het(x, par, name2pos, num_circuit_genes,
                                     e, k_het):
     # calculate the effective mRNA concentrations divided by the ribosome-mRNA dissociation constants, no correction
     m_het_div_k_het_uncorr = jnp.sum(x[8:8 + num_circuit_genes] / k_het)

@@ -71,6 +71,7 @@ def values_for_analytical(par,  # dictionary with model parameters
            init_conds,  # initial condition DICTIONARY for the cell with synthetic circuit
            circuit_genes, circuit_miscs, circuit_name2pos,  # dictionaries with circuit gene and miscellaneous specie names, species name to vector position decoder
            circuit_F_calc,  # function for calculating the synthetic genes' transcription regulation functions
+           circuit_eff_m_het_div_k_het,  # function for calculating the effective total m/k value for all synthetic genes
            t_to_steady=50, rtol=1e-6, atol=1e-6     # simulation parameters: time until steady state, relative and absolute tolerances
            ):
     # auxiliary tools for simulating the model and plotting simulation outcomes
@@ -96,7 +97,8 @@ def values_for_analytical(par,  # dictionary with model parameters
     xs = np.array(sol.ys)
 
     # get the e and F_r values - now with ORIGINAL parameters
-    es,_,F_rs,_,_,_,_,_ = cellmodel_auxil.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts,xs,par,circuit_genes,circuit_miscs,circuit_name2pos)
+    es,_,F_rs,_,_,_,_,_ = cellmodel_auxil.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts,xs,par,circuit_genes,circuit_miscs,
+                                                                       circuit_name2pos, circuit_eff_m_het_div_k_het)
     e=es[-1]
     F_r=F_rs[-1]
 
@@ -171,6 +173,7 @@ def values_for_analytical_sep(par,  # dictionary with model parameters
            init_conds,  # initial condition DICTIONARY for the cell with synthetic circuit
            circuit_genes, circuit_miscs, circuit_name2pos,  # dictionaries with circuit gene and miscellaneous specie names, species name to vector position decoder
            circuit_F_calc,  # function for calculating the synthetic genes' transcription regulation functions
+           circuit_eff_m_het_div_k_het,  # function for calculating the effective total m/k value for all synthetic genes
            t_to_steady=50, rtol=1e-6, atol=1e-6     # simulation parameters: time until steady state, relative and absolute tolerances
            ):
     # auxiliary tools for simulating the model and plotting simulation outcomes
@@ -196,7 +199,8 @@ def values_for_analytical_sep(par,  # dictionary with model parameters
     xs = np.array(sol.ys)
 
     # get the e and F_r values - now with ORIGINAL parameters
-    es,_,F_rs,_,_,_,_,_ = cellmodel_auxil.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts,xs,par,circuit_genes,circuit_miscs,circuit_name2pos)
+    es,_,F_rs,_,_,_,_,_ = cellmodel_auxil.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts,xs,par,circuit_genes,circuit_miscs,
+                                                                       circuit_name2pos, circuit_eff_m_het_div_k_het)
     e=es[-1]
     F_r=F_rs[-1]
 

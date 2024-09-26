@@ -1814,6 +1814,7 @@ def gen_stoich_mat(par,
 # simulate to find switching time
 def tauleap_sim_switch(par,  # dictionary with model parameters
                 circuit_v,  # calculating the propensity vector for stochastic simulation of circuit expression
+                circuit_eff_m_het_div_k_het,  # calculating the effective mRNA/k values for the synthetic genes in the circuit
                 x0,  # initial condition VECTOR
                 num_circuit_genes, num_circuit_miscs, circuit_name2pos, # dictionaries with circuit gene and miscellaneous specie names, species name to vector position decoder,
                 sgp4j, # relevant synthetic gene parameters in jax.array form
@@ -1838,7 +1839,8 @@ def tauleap_sim_switch(par,  # dictionary with model parameters
     ode_steps_in_tau = int(tau / tau_odestep)
 
     # make the retrieval of next x a lambda-function for jax.lax.scanning
-    loop_step = lambda i, sim_state: tauleap_check_switch(circuit_v, sim_state, i, tau, ode_steps_in_tau, args,
+    loop_step = lambda i, sim_state: tauleap_check_switch(circuit_v, circuit_eff_m_het_div_k_het,
+                                                          sim_state, i, tau, ode_steps_in_tau, args,
                                                           switch_condition, switch_condition1)
 
     # define the jac.lax.scan function
@@ -1883,6 +1885,7 @@ def tauleap_sim_switch(par,  # dictionary with model parameters
 
 # check if the next trajectory point is a switching point
 def tauleap_check_switch(circuit_v,  # calculating the propensity vector for stochastic simulation of circuit expression
+                         circuit_eff_m_het_div_k_het,  # calculating the effective mRNA/k values for the synthetic genes in the circuit
                          sim_state_record,  # simulator state
                          i,  # number of steps that is being checked
                          tau,  # time step
@@ -1898,7 +1901,9 @@ def tauleap_check_switch(circuit_v,  # calculating the propensity vector for sto
 
         # update x
         # find deterministic change in x
-        det_update = tauleap_integrate_ode(sim_state_tauleap['t'], sim_state_tauleap['x'], tau, ode_steps_in_tau, args)
+        det_update = tauleap_integrate_ode(sim_state_tauleap['t'], sim_state_tauleap['x'], tau, ode_steps_in_tau,
+                                           circuit_eff_m_het_div_k_het,
+                                           args)
         # find stochastic change in x
         stoch_update = tauleap_update_stochastically(sim_state_tauleap['t'], sim_state_tauleap['x'],
                                                      tau, args, circuit_v,
