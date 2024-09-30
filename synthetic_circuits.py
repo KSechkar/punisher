@@ -95,6 +95,7 @@ def oneconstitutive_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -234,6 +235,7 @@ def oneconstitutive_cat_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -351,6 +353,7 @@ def oneconstitutive_cat_prot_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -472,6 +475,7 @@ def punisher_b_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -726,8 +730,8 @@ def punisher_sep_b_initialise():
         default_par['k+_' + gene] = 60.0  # ribosome binding rate (/h/nM)
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
-        default_par[
-            'd_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -969,6 +973,7 @@ def twotoggles_punisher_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation - zero by default (/h)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -1191,6 +1196,7 @@ def twotoggles_only_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation - zero by default (/h)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -1351,6 +1357,7 @@ def twotoggles_add_initialise():
         default_par['k-_' + gene] = 60.0  # ribosome unbinding rate (/h)
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation - zero by default (/h)
+        default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance

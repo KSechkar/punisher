@@ -39,8 +39,8 @@ def l_calc(par, e, B, prodeflux):
 
 
 # tRNA charging rate
-def nu_calc(par, tu, s):
-    return par['nu_max'] * s * (tu / (tu + par['K_nu']))
+def nu_calc(par, tu, s, metab_burd):
+    return par['nu_max'] * s * (tu / (tu + par['K_nu'])) *(1/(1+metab_burd))
 
 
 # tRNA synthesis rate
@@ -116,6 +116,7 @@ class CellModelAuxiliary:
         kminus_het = np.zeros(len(circuit_genes))
         n_het = np.zeros(len(circuit_genes))
         d_het = np.zeros(len(circuit_genes))
+        g_het = np.zeros(len(circuit_genes))
 
         # fill parameter arrays
         for i in range(0, len(circuit_genes)):
@@ -123,9 +124,10 @@ class CellModelAuxiliary:
             kminus_het[i] = par['k-_' + circuit_genes[i]]
             n_het[i] = par['n_' + circuit_genes[i]]
             d_het[i] = par['d_' + circuit_genes[i]]
+            g_het[i] = par['g_' + circuit_genes[i]]
 
         # return as a tuple of arrays
-        return (jnp.array(kplus_het), jnp.array(kminus_het), jnp.array(n_het), jnp.array(d_het))
+        return (jnp.array(kplus_het), jnp.array(kminus_het), jnp.array(n_het), jnp.array(d_het)), jnp.array(g_het)
 
     # SET DEFAULTS
     # set default parameters
@@ -664,7 +666,7 @@ class CellModelAuxiliary:
 
         # vector of Synthetic Gene Parameters 4 JAX
         sgp4j = self.synth_gene_params_for_jax(par, circuit_genes)
-        kplus_het, kminus_het, n_het, d_het = sgp4j
+        kplus_het, kminus_het, n_het, d_het, g_het  = sgp4j
 
         # FIND SPECIAL SYNTHETIC PROTEIN CONCENTRATIONS - IF PRESENT
         # chloramphenicol acetyltransferase (antibiotic reistance)
@@ -712,7 +714,10 @@ class CellModelAuxiliary:
         D = H * (1 + mq_div_kq + m_notq_div_k_notq)
         B = R * (1 / H - 1 / D)  # actively translating ribosomes (inc. those translating housekeeping genes)
 
-        nu = nu_calc(par, tu, s)  # tRNA charging rate
+        # metabolic burdne
+        metab_burd = jnp.sum(g_het * x[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=1)
+
+        nu = nu_calc(par, tu, s, metab_burd)  # tRNA charging rate
 
         l = l_calc(par, e, B, prodeflux)  # growth rate
 
@@ -1312,10 +1317,9 @@ def ode(t, x,
     # unpack the args
     par = args[0]  # model parameters
     circuit_name2pos = args[1]  # gene name - position in circuit vector decoder
-    num_circuit_genes = args[2];
-    num_circuit_miscs = args[3]  # number of genes and miscellaneous species in the circuit
-    kplus_het, kminus_het, n_het, d_het = args[
-        4]  # unpack jax-arrayed synthetic gene parameters for calculating k values
+    num_circuit_genes = args[2] # number of genes in the circuit
+    num_circuit_miscs = args[3]  # number of miscellaneous species in the circuit
+    kplus_het, kminus_het, n_het, d_het, g_het = args[4]  # unpack jax-arrayed synthetic gene parameters
 
     # give the state vector entries meaningful names
     m_a = x[0]  # metabolic gene mRNA
@@ -1365,7 +1369,9 @@ def ode(t, x,
     D = H * (1 + mq_div_kq + m_notq_div_k_notq)
     B = R * (1 / H - 1 / D)  # actively translating ribosomes (inc. those translating housekeeping genes)
 
-    nu = nu_calc(par, tu, s)  # tRNA charging rate
+    metab_burd=jnp.sum(g_het*x[8 + num_circuit_genes:8 + num_circuit_genes * 2])# total metabolic burden imposed by synthetic proteins
+
+    nu = nu_calc(par, tu, s, metab_burd)  # tRNA charging rate
 
     l = l_calc(par, e, B, prodeflux)  # growth rate
 
@@ -1539,8 +1545,7 @@ def tauleap_ode(t, x, circuit_eff_m_het_div_k_het, args):
     circuit_name2pos = args[1]  # gene name - position in circuit vector decoder
     num_circuit_genes = args[2]  # number of genes in the circuit
     num_circuit_miscs = args[3]  # number of miscellaneous species in the circuit
-    kplus_het, kminus_het, n_het, d_het = args[
-        4]  # unpack jax-arrayed synthetic gene parameters for calculating k values
+    kplus_het, kminus_het, n_het, d_het, g_het = args[4]  # unpack jax-arrayed synthetic gene parameters
 
     # give the state vector entries meaningful names
     m_a = x[0]  # metabolic gene mRNA
@@ -1592,7 +1597,9 @@ def tauleap_ode(t, x, circuit_eff_m_het_div_k_het, args):
     D = H * (1 + mq_div_kq + m_notq_div_k_notq)
     B = R * (1 / H - 1 / D)  # actively translating ribosomes (inc. those translating housekeeping genes)
 
-    nu = nu_calc(par, tu, s)  # tRNA charging rate
+    metab_burd = jnp.sum(g_het*x[8 + num_circuit_genes:8 + num_circuit_genes * 2])# metabolic burden imposed by synthetic proteins
+
+    nu = nu_calc(par, tu, s, metab_burd)  # tRNA charging rate
 
     l = l_calc(par, e, B, prodeflux)  # growth rate
 
@@ -1631,8 +1638,7 @@ def tauleap_update_stochastically(t, x, tau, args, circuit_v,
     circuit_name2pos = args[1]  # gene name - position in circuit vector decoder
     num_circuit_genes = args[2]  # number of genes in the circuit
     num_circuit_miscs = args[3]  # number of miscellaneous species in the circuit
-    kplus_het, kminus_het, n_het, d_het = args[
-        4]  # unpack jax-arrayed synthetic gene parameters for calculating k values
+    kplus_het, kminus_het, n_het, d_het, g_het = args[4]  # unpack jax-arrayed synthetic gene parameters
     # stochastic simulation arguments
     mRNA_count_scales = args[5]
     S = args[6]
@@ -1681,7 +1687,9 @@ def tauleap_update_stochastically(t, x, tau, args, circuit_v,
     D = H * (1 + mq_div_kq + m_notq_div_k_notq)
     B = R * (1 / H - 1 / D)  # actively translating ribosomes (inc. those translating housekeeping genes)
 
-    nu = nu_calc(par, tu, s)  # tRNA charging rate
+    metab_burd = jnp.sum(g_het*x[8 + num_circuit_genes:8 + num_circuit_genes * 2])  # total metabolic burden imposed by synthetic proteins
+
+    nu = nu_calc(par, tu, s, metab_burd) # tRNA charging rate
 
     l = l_calc(par, e, B, prodeflux)  # growth rate
 
