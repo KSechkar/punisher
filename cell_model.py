@@ -127,7 +127,7 @@ class CellModelAuxiliary:
             g_het[i] = par['g_' + circuit_genes[i]]
 
         # return as a tuple of arrays
-        return (jnp.array(kplus_het), jnp.array(kminus_het), jnp.array(n_het), jnp.array(d_het)), jnp.array(g_het)
+        return (jnp.array(kplus_het), jnp.array(kminus_het), jnp.array(n_het), jnp.array(d_het), jnp.array(g_het))
 
     # SET DEFAULTS
     # set default parameters
