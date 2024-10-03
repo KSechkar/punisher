@@ -170,8 +170,8 @@ class CellModelAuxiliary:
         params['diff_h'] = 90.0 * 60  # chloramphenicol diffusion coefficient through the cell membrane (1/h)
         params['K_D'] = 1300.0  # chloramphenicol-ribosome dissociation constant (nM)
         params['K_C'] = (1 / 3) / 60  # dissociation constant for chloramphenicol removal by the cat (chloramphenicol resistance) protein, if present (nM*h)
-        params[
-            'cat_gene_present'] = 0  # 1 if cat gene is present, 0 otherwise (will be automatically set to 1 if your circuit has a gene titled 'cat' and you haven't messed where you shouldn't)
+        params['cat_gene_present'] = 0  # 1 if cat gene is present, 0 otherwise (will be automatically set to 1 if your circuit has a gene titled 'cat' and you haven't messed where you shouldn't)
+        params['eff_h'] = 0.0  # chloramphenicol efflux rate due to membrane protein activity (1/h)
 
         # PARAMETERS FITTED TO DATA IN SECHKAR ET AL., 2024
         params['a_a'] = 394464.6979  # metabolic gene transcription rate (/h)
@@ -1392,7 +1392,7 @@ def ode(t, x,
                          # nutrient quality assumed constant
                          0,
                          # chloramphenicol concentration
-                         par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C'] - l * h
+                         par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C'] - l * h - par['eff_h'] * h,
                      ] +
                      circuit_ode(t, x, e, l, R, k_het, D, p_prot,
                                  par, circuit_name2pos)
