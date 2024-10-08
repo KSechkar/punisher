@@ -243,7 +243,18 @@ class CellModelAuxiliary:
     # plot protein composition of the cell by mass over time
     def plot_protein_masses(self, ts, xs,
                             par, circuit_genes,  # model parameters, list of circuit genes
-                            dimensions=(320, 180), tspan=None):
+                            dimensions=(320, 180), tspan=None,
+                            varvol=False  # whether the simulation considers variable cell volumes
+                            ):
+        if (varvol):
+            Vs = xs[:, 6]  # cell volumes
+            xs_concs = np.divide(xs, Vs * np.ones_like(
+                np.array([xs[0, :]]).T))  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(
+                Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
+        else:
+            xs_concs = xs
+
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
@@ -263,32 +274,32 @@ class CellModelAuxiliary:
 
         # plot heterologous protein mass - if there are any heterologous proteins to begin with
         if (len(circuit_genes) != 0):
-            bottom_line = np.zeros(xs.shape[0])
-            top_line = bottom_line + np.sum(xs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2] * np.array(
+            bottom_line = np.zeros(xs_concs.shape[0])
+            top_line = bottom_line + np.sum(xs_concs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2] * np.array(
                 self.synth_gene_params_for_jax(par, circuit_genes)[2], ndmin=2), axis=1)
             mass_figure.patch(np.concatenate((ts, flip_t)), np.concatenate((bottom_line, np.flip(top_line))),
                               line_width=0.5, line_color='black', fill_color=self.gene_colours['het'],
                               legend_label='het')
         else:
-            top_line = np.zeros(xs.shape[0])
+            top_line = np.zeros(xs_concs.shape[0])
 
         # plot mass of inactivated ribosomes
-        if ((xs[:, 7] != 0).any()):
+        if ((xs_concs[:, 7] != 0).any()):
             bottom_line = top_line
-            top_line = bottom_line + xs[:, 3] * par['n_r'] * (xs[:, 7] / (par['K_D'] + xs[:, 7]))
+            top_line = bottom_line + xs_concs[:, 3] * par['n_r'] * (xs_concs[:, 7] / (par['K_D'] + xs_concs[:, 7]))
             mass_figure.patch(np.concatenate((ts, flip_t)), np.concatenate((bottom_line, np.flip(top_line))),
                               line_width=0.5, line_color='black', fill_color=self.gene_colours['h'], legend_label='R:h')
 
         # plot mass of active ribosomes - only if there are any to begin with
         bottom_line = top_line
-        top_line = bottom_line + xs[:, 3] * par['n_r'] * (par['K_D'] / (par['K_D'] + xs[:, 7]))
+        top_line = bottom_line + xs_concs[:, 3] * par['n_r'] * (par['K_D'] / (par['K_D'] + xs_concs[:, 7]))
         mass_figure.patch(np.concatenate((ts, flip_t)), np.concatenate((bottom_line, np.flip(top_line))),
                           line_width=0.5, line_color='black', fill_color=self.gene_colours['r'],
                           legend_label='R (free)')
 
         # plot metabolic protein mass
         bottom_line = top_line
-        top_line = bottom_line + xs[:, 2] * par['n_a']
+        top_line = bottom_line + xs_concs[:, 2] * par['n_a']
         mass_figure.patch(np.concatenate((ts, flip_t)), np.concatenate((bottom_line, np.flip(top_line))),
                           line_width=0.5, line_color='black', fill_color=self.gene_colours['a'], legend_label='p_a')
 
@@ -310,6 +321,13 @@ class CellModelAuxiliary:
                                    dimensions=(320, 180), tspan=None,
                                    varvol=False  # whether the simulation considers variable cell volumes
                                    ):
+        if(varvol):
+            Vs=xs[:,6]    # cell volumes
+            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)    # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s']*np.ones_like(Vs)    # instead of volumes, x without variable volumes has nutrient quality in this position
+        else:
+            xs_concs = xs
+
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
@@ -317,21 +335,17 @@ class CellModelAuxiliary:
         # Create a ColumnDataSource object for the plot
         source = bkmodels.ColumnDataSource(data={
             't': ts,
-            'm_a': xs[:, 0],  # metabolic mRNA
-            'm_r': xs[:, 1],  # ribosomal mRNA
-            'p_a': xs[:, 2],  # metabolic protein
-            'R': xs[:, 3],  # ribosomal protein
-            'tc': xs[:, 4],  # charged tRNA
-            'tu': xs[:, 5],  # uncharged tRNA
-            's': xs[:, 6],  # nutrient quality
-            'h': xs[:, 7],  # chloramphenicol concentration
-            'm_het': np.sum(xs[:, 8:8 + len(circuit_genes)], axis=1),  # heterologous mRNA
-            'p_het': np.sum(xs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=1),  # heterologous protein
+            'm_a': xs_concs[:, 0],  # metabolic mRNA
+            'm_r': xs_concs[:, 1],  # ribosomal mRNA
+            'p_a': xs_concs[:, 2],  # metabolic protein
+            'R': xs_concs[:, 3],  # ribosomal protein
+            'tc': xs_concs[:, 4],  # charged tRNA
+            'tu': xs_concs[:, 5],  # uncharged tRNA
+            's': xs_concs[:, 6],  # nutrient quality
+            'h': xs_concs[:, 7],  # chloramphenicol concentration
+            'm_het': np.sum(xs_concs[:, 8:8 + len(circuit_genes)], axis=1),  # heterologous mRNA
+            'p_het': np.sum(xs_concs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=1),  # heterologous protein
         })
-        # redefine the nutrient quality and create a cell volumes record if we're considering variable cell volumes
-        if (varvol):
-            source.data['s'] = par['s'] * np.ones_like(ts)  # nutrient quality is a constant parameter
-            source.data['V'] = xs[:, 6]  # cell volume is the 6th state in the x vector
 
         # PLOT mRNA CONCENTRATIONS
         mRNA_figure = bkplot.figure(
@@ -414,6 +428,14 @@ class CellModelAuxiliary:
                                     dimensions=(320, 180), tspan=None,
                                     varvol=False  # whether the simulation considers variable cell volumes
                                     ):
+        # turn molecule counts into concentrations if considering variable cell volumes
+        if (varvol):
+            Vs = xs[:, 6]  # cell volumes
+            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
+        else:
+            xs_concs = xs
+
         # if no circuitry at all, return no plots
         if (len(circuit_genes) + len(circuit_miscs) == 0):
             return None, None, None
@@ -426,18 +448,11 @@ class CellModelAuxiliary:
         data_for_column = {'t': ts}  # initialise with time axis
         # record synthetic mRNA and protein concentrations
         for i in range(0, len(circuit_genes)):
-            if not varvol:
-                data_for_column['m_' + circuit_genes[i]] = xs[:, 8 + i]
-                data_for_column['p_' + circuit_genes[i]] = xs[:, 8 + len(circuit_genes) + i]
-            else:   # if considering variable cell volumes, divide molecule counts by cell volume
-                data_for_column['m_' + circuit_genes[i]] = np.divide(xs[:, 8 + i], xs[:, 6])
-                data_for_column['p_' + circuit_genes[i]] = np.divide(xs[:, 8 + len(circuit_genes) + i], xs[:, 6])
+            data_for_column['m_' + circuit_genes[i]] = xs_concs[:, 8 + i]
+            data_for_column['p_' + circuit_genes[i]] = xs_concs[:, 8 + len(circuit_genes) + i]
         # record miscellaneous species' concentrations
         for i in range(0, len(circuit_miscs)):
-            if not varvol:
-                data_for_column[circuit_miscs[i]] = xs[:, 8 + len(circuit_genes) * 2 + i]
-            else:   # if considering variable cell volumes, divide molecule counts by cell volume
-                data_for_column[circuit_miscs[i]] = np.divide(xs[:, 8 + len(circuit_genes) * 2 + i], xs[:, 6])
+            data_for_column[circuit_miscs[i]] = xs_concs[:, 8 + len(circuit_genes) * 2 + i]
         source = bkmodels.ColumnDataSource(data=data_for_column)
 
         # PLOT mRNA and PROTEIN CONCENTRATIONS (IF ANY)
@@ -515,13 +530,11 @@ class CellModelAuxiliary:
                                 dimensions=(320, 180), tspan=None,
                                 varvol = False  # whether the simulation considers variable cell volumes
                                 ):
-        # if considering variable cell volumes, divide heterologous molecule counts by cell volume
-        if varvol:
-            xs_concs = np.concatenate((xs[:, 0:6],
-                                       np.ones_like(ts) * par['s'], # have the corresponding x entry for nutirent qualities now
-                                       xs[:, 7],
-                                       np.divide(xs[:, 8:], xs[:, 6] * np.ones_like(np.array([xs[0, 8:]]).T))),
-                                      axis=1)
+        # if considering variable cell volumes, divide molecule counts by cell volume to get concentrations
+        if (varvol):
+            Vs = xs[:, 6]  # cell volumes
+            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
 
@@ -571,14 +584,12 @@ class CellModelAuxiliary:
                             dimensions=(320, 180), tspan=None,
                             varvol=False  # whether the simulation considers variable cell volumes
                             ):
-        # if considering variable cell volumes, divide heterologous molecule counts by cell volume
-        if varvol:
-            xs_concs = np.concatenate((xs[:, 0:6],
-                                       np.ones_like(ts) * par['s'],
-                                       # have the corresponding x entry for nutirent qualities now
-                                       xs[:, 7],
-                                       np.divide(xs[:, 8:], xs[:, 6] * np.ones_like(np.array([xs[0, 8:]]).T))),
-                                      axis=1)
+        # if considering variable cell volumes, divide molecule counts by cell volume to get concentrations
+        if (varvol):
+            Vs = xs[:, 6]  # cell volumes
+            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(
+                Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
 
@@ -693,6 +704,38 @@ class CellModelAuxiliary:
 
         return l_figure, e_figure, Fr_figure, ppGpp_figure, nu_figure, D_figure
 
+    # plot cell volume over time
+    def plot_volume(self, ts, xs,
+                 par, circuit_genes,  # model parameters, list of circuit genes
+                 dimensions=(320, 180), tspan=None,  # whether the simulation considers variable cell volumes
+                 ):
+        # set default time span if unspecified
+        if (tspan == None):
+            tspan = (ts[0], ts[-1])
+
+        # Create a ColumnDataSource object for the plot
+        source = bkmodels.ColumnDataSource(data={
+            't': ts,
+            'V': xs[:, 6],  # cel volume
+        })
+
+        vol_figure = bkplot.figure(
+            frame_width=dimensions[0],
+            frame_height=dimensions[1],
+            x_axis_label="t, hours",
+            y_axis_label="Cell volume, um^3",
+            x_range=tspan,
+            title='Cell volume',
+            tools="box_zoom,pan,hover,reset"
+        )
+        vol_figure.line(x='t', y='V', source=source, line_width=1.5, line_color='blue',
+                         legend_label='cell volume')  # plot metabolic mRNA concentrations
+        vol_figure.legend.label_text_font_size = "8pt"
+        vol_figure.legend.location = "top_right"
+        vol_figure.legend.click_policy = 'hide'
+
+        return vol_figure
+
     # find values of different cellular variables
     def get_e_l_Fr_nu_psi_T_D_Dnodeg(self, t, x,
                                      par, circuit_genes, circuit_miscs, circuit_name2pos,
@@ -786,12 +829,12 @@ class CellModelAuxiliary:
                                             ):
         # if considering variable cell volumes, divide heterologous molecule counts by cell volume
         if varvol:
-            xss_concs = np.concatenate((xss[:, :, 0:6],
-                                       np.ones_like(xss[:, :, 6]) * par['s'],
-                                       # have the corresponding x entry for nutirent qualities now
-                                       xss[:, :, 7],
-                                       np.divide(xss[:, :, 8:], xss[:, :, 6] * np.ones_like(np.array([xss[:, 0, 8:]]).T))),
-                                      axis=1)
+            xss_concs=np.zeros_like(xss)    # initialise
+            Vs=np.zeros_like(xss[:,:, 6])    # initialise
+            for i in range(0, len(xss)):
+                Vs[i,:]=xss[i,:,6]    # cell volumes
+                xss_concs[i,:,:] = np.divide(xss, (Vs[i,:] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, 6] = par['s'] * np.ones_like(Vs[i,:])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xss_concs = xss
 
@@ -956,13 +999,13 @@ class CellModelAuxiliary:
                                              ):
         # if considering variable cell volumes, divide heterologous molecule counts by cell volume
         if varvol:
-            xss_concs = np.concatenate((xss[:, :, 0:6],
-                                        np.ones_like(xss[:, :, 6]) * par['s'],
-                                        # have the corresponding x entry for nutirent qualities now
-                                        xss[:, :, 7],
-                                        np.divide(xss[:, :, 8:],
-                                                  xss[:, :, 6] * np.ones_like(np.array([xss[:, 0, 8:]]).T))),
-                                       axis=1)
+            xss_concs = np.zeros_like(xss)  # initialise
+            Vs = np.zeros_like(xss[:, :, 6])  # initialise
+            for i in range(0, len(xss)):
+                Vs[i, :] = xss[i, :, 6]  # cell volumes
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, 6] = par['s'] * np.ones_like(
+                    Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xss_concs = xss
 
@@ -1104,13 +1147,13 @@ class CellModelAuxiliary:
                                          ):
         # if considering variable cell volumes, divide heterologous molecule counts by cell volume
         if varvol:
-            xss_concs = np.concatenate((xss[:, :, 0:6],
-                                        np.ones_like(xss[:, :, 6]) * par['s'],
-                                        # have the corresponding x entry for nutirent qualities now
-                                        xss[:, :, 7],
-                                        np.divide(xss[:, :, 8:],
-                                                  xss[:, :, 6] * np.ones_like(np.array([xss[:, 0, 8:]]).T))),
-                                       axis=1)
+            xss_concs = np.zeros_like(xss)  # initialise
+            Vs = np.zeros_like(xss[:, :, 6])  # initialise
+            for i in range(0, len(xss)):
+                Vs[i, :] = xss[i, :, 6]  # cell volumes
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, 6] = par['s'] * np.ones_like(
+                    Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xss_concs = xss
 
@@ -1189,13 +1232,13 @@ class CellModelAuxiliary:
                                      ):
         # if considering variable cell volumes, divide heterologous molecule counts by cell volume
         if varvol:
-            xss_concs = np.concatenate((xss[:, :, 0:6],
-                                        np.ones_like(xss[:, :, 6]) * par['s'],
-                                        # have the corresponding x entry for nutirent qualities now
-                                        xss[:, :, 7],
-                                        np.divide(xss[:, :, 8:],
-                                                  xss[:, :, 6] * np.ones_like(np.array([xss[:, 0, 8:]]).T))),
-                                       axis=1)
+            xss_concs = np.zeros_like(xss)  # initialise
+            Vs = np.zeros_like(xss[:, :, 6])  # initialise
+            for i in range(0, len(xss)):
+                Vs[i, :] = xss[i, :, 6]  # cell volumes
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, 6] = par['s'] * np.ones_like(
+                    Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xss_concs = xss
 
@@ -2138,7 +2181,7 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
     ode_steps_in_tau = int(tau / tau_odestep)
 
     # make the retrieval of next x a lambda-function for jax.lax.scanning
-    scan_step = lambda sim_state, t: tauleap_record_x(circuit_v, circuit_eff_m_het_div_k_het,
+    scan_step = lambda sim_state, t: tauleap_record_x_varvol(circuit_v, circuit_eff_m_het_div_k_het,
                                                       sim_state, t, tau, ode_steps_in_tau,
                                                       args)
 
@@ -2213,9 +2256,8 @@ def tauleap_record_x_varvol(circuit_v,
         next_x, next_key = jax.lax.cond(next_x_nonneg[6] >= args[0]['V_crit'],
                                         # check if cell volume exceeds the critical volume
                                         tauleap_division_varvol,  # if yes, call the division function
-                                        lambda x, par, key: (x, key),  # if no, just return the old state and key
-                                        (next_x_nonneg, args[0],
-                                         key_after_stoch_update))  # arguments for the division function
+                                        lambda x, par, key, avg_dynamics: (x, key),  # if no, just return the old state and key
+                                        next_x_nonneg, args[0], key_after_stoch_update, sim_state_tauleap['avg_dynamics'])  # arguments for the division function
 
         return {
             # entries updated over the course of the tau-leap step
@@ -2248,33 +2290,29 @@ def tauleap_record_x_varvol(circuit_v,
 
 # cell division
 def tauleap_division_varvol(x, par, key, avg_dynamics):
-    # new volume (x[6]) is half the old one
-    x_with_new_volume = x.at[6].set(x[6] / 2)
-
     # in considering average dynamics, we just take the average of the heterologous species
     x_with_partitioning = jax.lax.cond(avg_dynamics,  # if we're considering the deterministic case
-                                       lambda x, key: jnp.concatenate((x[0:8], jnp.round(x[8:] / 2, 0))),
-                                       # just divide abundances by two heterologous species
-                                       lambda x, key: jnp.concatenate(
-                                           (x_with_new_volume[0:8], jax.random.binomial(key, x[8:], 0.5))),
-                                       (x_with_new_volume,
-                                        key))  # if we're considering the stochastic case, randomly partition heterologous species
+                                       # if considering average dynamics, just divide all abundances (as well as volume at x[6]) by two
+                                       lambda x, key: x/2,
+                                       # if considering average dynamics, divide native species' abundances (as well as volume at x[6]) by two
+                                       # and assume random partitioning of heterologous species according to binomial distribution
+                                       lambda x, key: jnp.concatenate((x[0:8]/2, jax.random.binomial(key, x[8:], 0.5))),
+                                       x, key)  # if we're considering the stochastic case, randomly partition heterologous species
 
     # if random partitioning has been used, update the key
-    key_after_partitioning, _ = jax.lax.cond(avg_dynamics,
-                                             lambda key: key,
-                                             lambda key: jax.random.split(key, 2)[0],
-                                             key)
+    key_after_partitioning = jax.lax.cond(avg_dynamics,
+                                          lambda key: key,
+                                          lambda key: jax.random.split(key, 2)[0],
+                                          key)
 
     # return the state vector with new cell volume and partitioned heterologous species, as well as the new random number generation key
     return x_with_partitioning, key_after_partitioning
-
 
 # ode integration - Euler method
 def tauleap_integrate_ode_varvol(t, x, tau, ode_steps_in_tau,
                                  circuit_eff_m_het_div_k_het,
                                  args):
-    return tauleap_ode(t, x, circuit_eff_m_het_div_k_het, args) * tau
+    return tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args) * tau
 
 
 # ode for the deterministic part of the tau-leaping simulation
@@ -2286,20 +2324,20 @@ def tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args):
     num_circuit_miscs = args[3]  # number of miscellaneous species in the circuit
     kplus_het, kminus_het, n_het, d_het, g_het = args[4]  # unpack jax-arrayed synthetic gene parameters
 
-    # give the state vector entries meaningful names
-    m_a = x[0]  # metabolic gene mRNA
-    m_r = x[1]  # ribosomal gene mRNA
-    p_a = x[2]  # metabolic proteins
-    R = x[3]  # non-inactivated ribosomes
-    tc = x[4]  # charged tRNAs
-    tu = x[5]  # uncharged tRNAs
-    V = x[6]  # CAREFUL: THIS ENTRY IS CELL VOLUME HERE; NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
-    s = par['s']
-    h = x[7]  # INTERNAL chloramphenicol concentration (varies)
-    # synthetic circuit genes and miscellaneous species can be accessed directly from x with circuit_name2pos
+    # GET THE STATE VECTOR WITH SPECIE CONCENTRATIONS (divide them by the cell volume)
+    V = x[6]
+    x_concs=x/V
 
-    # GET THE STATE VECTOR WITH SPECIE CONCENTRATIONS (in x, heterologous specie entries are COUNTS across the WHOLE VOLUME)
-    x_concs = jnp.concatenate((x[0:8], x[8:] / V))
+    # give the state vector entries meaningful names
+    m_a = x_concs[0]  # metabolic gene mRNA
+    m_r = x_concs[1]  # ribosomal gene mRNA
+    p_a = x_concs[2]  # metabolic proteins
+    R = x_concs[3]  # non-inactivated ribosomes
+    tc = x_concs[4]  # charged tRNAs
+    tu = x_concs[5]  # uncharged tRNAs
+    s = par['s']    # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
+    h = x_concs[7]  # INTERNAL chloramphenicol concentration (varies)
+    # synthetic circuit genes and miscellaneous species can be accessed directly from x with circuit_name2pos
 
     # FIND SPECIAL SYNTHETIC PROTEIN CONCENTRATIONS - IF PRESENT
     # chloramphenicol acetyltransferase (antibiotic reistance)
@@ -2352,30 +2390,29 @@ def tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args):
     # continuously, we only consider charged aa-tRNA consumption by NATIVE protein translation
     B_cont = R * (1 / H - 1 / D - jnp.sum(jnp.divide(x_concs[8:8 + num_circuit_genes], k_het)) / D)
 
-    # return dx/dt for the host cell
-    return jnp.array([
+    # return dx/dt for the host cell; CAREFUL: NO DILUTION TERM, AND dx/dt per 1um^3 IS MULTIPLED BY V
+    return V*jnp.array([
                          # mRNAs
-                         l * par['c_a'] * par['a_a'] - (par['b_a'] + l) * m_a,
-                         l * Fr_calc(par, T) * par['c_r'] * par['a_r'] - (par['b_r'] + l) * m_r,
+                         l * par['c_a'] * par['a_a'] - par['b_a'] * m_a,
+                         l * Fr_calc(par, T) * par['c_r'] * par['a_r'] - par['b_r'] * m_r,
                          # metabolic protein p_a
-                         (e / par['n_a']) * (m_a / k_a / D) * R - l * p_a,
+                         (e / par['n_a']) * (m_a / k_a / D) * R,
                          # ribosomes
-                         (e / par['n_r']) * (m_r / k_r / D) * R - l * R,
+                         (e / par['n_r']) * (m_r / k_r / D) * R,
                          # tRNAs
-                         nu * p_a - l * tc - e * B_cont,
-                         l * psi - l * tu - nu * p_a + e * B_cont,
-                         # nutrient quality assumed constant
-                         0,
+                         nu * p_a - e * B_cont,
+                         l * psi - nu * p_a + e * B_cont,
+                         # volume increases at growth rate (mind that we multiply by V before jnp.array())
+                         l,
                          # chloramphenicol concentration
-                         par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C'] - l * h
+                         par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C']
                      ] +
                      [0] * (2 * num_circuit_genes) + [0] * num_circuit_miscs
                      # synthetic gene expression considered stochastically
                      )
 
 
-#
-#
+# stochastic update calculation
 def tauleap_update_stochastically_varvol(t, x, tau, args, circuit_v,
                                          key, avg_dynamics):
     # PREPARATION
@@ -2390,20 +2427,20 @@ def tauleap_update_stochastically_varvol(t, x, tau, args, circuit_v,
     S = args[6]
     circuit_synpos2genename = args[7]  # parameter vectors for efficient simulation and reaction stoichiometry info
 
-    # give the state vector entries meaningful names
-    m_a = x[0]  # metabolic gene mRNA
-    m_r = x[1]  # ribosomal gene mRNA
-    p_a = x[2]  # metabolic proteins
-    R = x[3]  # non-inactivated ribosomes
-    tc = x[4]  # charged tRNAs
-    tu = x[5]  # uncharged tRNAs
-    V = x[6]  # CAREFUL: THIS ENTRY IS CELL VOLUME HERE; NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
-    s = par['s']
-    h = x[7]  # INTERNAL chloramphenicol concentration (varies)
-    # synthetic circuit genes and miscellaneous species can be accessed directly from x with circuit_name2pos
+    # GET THE STATE VECTOR WITH SPECIE CONCENTRATIONS (divide them by the cell volume)
+    V = x[6]
+    x_concs = x / V
 
-    # GET THE STATE VECTOR WITH SPECIE CONCENTRATIONS (in x, heterologous specie entries are COUNTS across the WHOLE VOLUME)
-    x_concs = jnp.concatenate((x[0:8], x[8:] / V))
+    # give the state vector entries meaningful names
+    m_a = x_concs[0]  # metabolic gene mRNA
+    m_r = x_concs[1]  # ribosomal gene mRNA
+    p_a = x_concs[2]  # metabolic proteins
+    R = x_concs[3]  # non-inactivated ribosomes
+    tc = x_concs[4]  # charged tRNAs
+    tu = x_concs[5]  # uncharged tRNAs
+    s = par['s']    # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
+    h = x_concs[7]  # INTERNAL chloramphenicol concentration (varies)
+    # synthetic circuit genes and miscellaneous species can be accessed directly from x_concs with circuit_name2pos
 
     # FIND SPECIAL SYNTHETIC PROTEIN CONCENTRATIONS - IF PRESENT
     # chloramphenicol acetyltransferase (antibiotic reistance)
@@ -2521,10 +2558,13 @@ def gen_stoich_mat_varvol(par,
     mRNA_count_scales_np = np.array(mRNA_count_scales)
 
     # find the number of stochastic reactions that can occur
-    num_stoch_reactions = num_circuit_genes * (3 +  # synthesis/degradation/dilution of mRNA
-                                               3)  # synthesis/degradation/dilution of protein
+    num_stoch_reactions = num_circuit_genes * (2 +  # synthesis/degradation/dilution of mRNA
+                                               2)  # synthesis/degradation/dilution of protein
     if ('cat_pb' in circuit_name2pos.keys()):  # plus, might need to model stochastic action of integrase
-        num_stoch_reactions += 2 + 2  # functional CAT gene forward and reverse strain exchange, LR site-integrase dissociation due to conformation change and plasmid replication
+        num_stoch_reactions += 2  # functional CAT gene forward and reverse strain exchange, LR site-integrase dissociation due to conformation change and plasmid replication
+        num_stoch_reactions += 1 # LR site-integrase dissociation due to conformation change
+        num_stoch_reactions += 3 # replication of the plasmid with LR site-integrase complex, functional CAT gene or no CAT gene
+        num_stoch_reactions += 2 # synthesis and degradation of the replication inhibitor
 
     # initialise (in numpy format)
     S = np.zeros((8 + 2 * num_circuit_genes + num_circuit_miscs, num_stoch_reactions))
@@ -2641,6 +2681,9 @@ def main():
     par['n_inh'] = 10  # number of steps of replication initiation at which inhibition can happen
     par['K_inh'] = 214.05  # replication inhibition constant (nM)
 
+    # critical cell volume triggering division
+    par['V_crit'] = 2.0*np.log(2)   # 2ln(2) so as to have an average volume of 1 um^3 assuming constant growth rate
+
     # culture medium
     nutr_qual=0.5
     par['s'] = nutr_qual  # nutrient quality (unitless)
@@ -2670,14 +2713,13 @@ def main():
     xs = np.array(sol.ys)
     # det_steady_x = jnp.concatenate((sol.ys[-1, 0:8], jnp.round(sol.ys[-1, 8:])))
     det_steady_x = sol.ys[-1, :]
-    print(1)
 
     # HYBRID SIMULATION WITH VARIABLE CELL VOLUME
     # tau-leap hybrid simulation parameters
-    tf_hybrid = (tf[-1], tf[-1] + 0.1)  # simulation time frame
+    tf_hybrid = (tf[-1], tf[-1] + 0.28)  # simulation time frame
     tau = 1e-7  # simulation time step
     tau_odestep = 1e-7  # number of ODE integration steps in a single tau-leap step (smaller than tau)
-    tau_savetimestep = 1e-2  # save time step a multiple of tau
+    tau_savetimestep = 2e-2  # save time step a multiple of tau
 
     # simulate
     timer = time.time()
@@ -2704,49 +2746,46 @@ def main():
     # concatenate the results with the deterministic simulation
     ts = np.concatenate((ts, np.array(ts_jnp)))
     xs_first = np.concatenate(
-        (xs, np.array(xs_jnp[1])))  # getting the results from the first random number generator key in vmap
+        (xs, np.array(xs_jnp[0])))  # getting the results from the first random number generator key in vmap
     xss = np.concatenate((xs * np.ones((keys0.shape[0], 1, 1)), np.array(xs_jnp)),
                          axis=1)  # getting the results from all vmapped trajectories
 
     print('tau-leap simulation time: ', time.time() - timer)
 
     # PLOT - HOST CELL MODEL
-    bkplot.output_file(filename="sundry plots/cellmodel_sim.html",
+    bkplot.output_file(filename="cellmodel_sim.html",
                        title="Cell Model Simulation")  # set up bokeh output file
     mass_fig = cellmodel_auxil.plot_protein_masses(ts, xs_first, par, circuit_genes)  # plot simulation results
-    nat_mrna_fig, nat_prot_fig, nat_trna_fig, h_fig = cellmodel_auxil.plot_native_concentrations(ts, xss, par,
+    nat_mrna_fig, nat_prot_fig, nat_trna_fig, h_fig = cellmodel_auxil.plot_native_concentrations(ts, xs_first, par,
                                                                                                  circuit_genes,
-                                                                                                 tspan=(tf[-1] - (tf_hybrid[1] - tf_hybrid[0]),
-                                                                                                        tf_hybrid[-1]),
+                                                                                                 tspan=tf_hybrid,
                                                                                                  varvol=True)  # plot simulation results
     l_figure, e_figure, Fr_figure, ppGpp_figure, nu_figure, D_figure = cellmodel_auxil.plot_phys_variables(ts,
-                                                                                                           xss,
+                                                                                                           xs_first,
                                                                                                            par,
                                                                                                            circuit_genes,
                                                                                                            circuit_miscs,
                                                                                                            circuit_name2pos,
                                                                                                            circuit_eff_m_het_div_k_het,
-                                                                                                           tspan=(tf[-1] - (tf_hybrid[-1] - tf_hybrid[0]),
-                                                                                                               tf_hybrid[-1]),
+                                                                                                           tspan=tf_hybrid,
                                                                                                            varvol=True)  # plot simulation results
-    bkplot.save(bklayouts.grid([[None, nat_mrna_fig, nat_prot_fig],
+    vol_figure = cellmodel_auxil.plot_volume(ts, xs_first, par, circuit_genes, tspan=tf_hybrid)  # plot simulation results
+    bkplot.save(bklayouts.grid([[nat_mrna_fig, nat_prot_fig, vol_figure],
                                 [nat_trna_fig, h_fig, l_figure],
                                 [e_figure, Fr_figure, D_figure]]))
 
     # PLOT - SYNTHETIC GENE CIRCUIT
-    bkplot.output_file(filename="sundry plots/circuit_sim.html",
+    bkplot.output_file(filename="circuit_sim.html",
                        title="Synthetic Gene Circuit Simulation")  # set up bokeh output file
-    het_mrna_fig, het_prot_fig, misc_fig = cellmodel_auxil.plot_circuit_concentrations_multiple(ts, xss, par,
-                                                                                                circuit_genes,
-                                                                                                circuit_miscs,
-                                                                                                circuit_name2pos,
-                                                                                                circuit_styles, tspan=(
-        tf[-1] - (tf_hybrid[-1] - tf_hybrid[0]), tf_hybrid[-1]),
-                                                                                                simtraj_alpha=0.1)  # plot simulation results
-    F_fig = cellmodel_auxil.plot_circuit_regulation_multiple(ts, xss, par, circuit_F_calc, circuit_genes, circuit_miscs,
-                                                             circuit_name2pos, circuit_styles, tspan=(
-        tf[-1] - (tf_hybrid[-1] - tf_hybrid[0]), tf_hybrid[-1]),
-                                                             simtraj_alpha=0.1)  # plot simulation results
+    het_mrna_fig, het_prot_fig, misc_fig = cellmodel_auxil.plot_circuit_concentrations(ts, xs_first, par,
+                                                                                       circuit_genes,
+                                                                                       circuit_miscs,
+                                                                                       circuit_name2pos,
+                                                                                       circuit_styles, tspan=tf_hybrid,
+                                                                                       varvol=True)  # plot simulation results
+    F_fig = cellmodel_auxil.plot_circuit_regulation(ts, xs_first, circuit_F_calc, par, circuit_genes, circuit_miscs,
+                                                    circuit_name2pos, circuit_styles, tspan=tf_hybrid,
+                                                    varvol=True)  # plot simulation results
     bkplot.save(bklayouts.grid([[het_mrna_fig, het_prot_fig, misc_fig],
                                 [F_fig, None, None]]))
 
