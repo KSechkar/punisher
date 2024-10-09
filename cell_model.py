@@ -76,7 +76,8 @@ class CellModelAuxiliary:
                     # function calculating the effective total mRNA/k for all synthetic genes
                     cellmodel_par, cellmodel_init_conds,  # host cell model parameters and initial conditions
                     # optional support for hybrid simulations
-                    circuit_v=None
+                    circuit_v=None,
+                    varvol=False  # whether the hybrid simulation considers variable cell volumes
                     ):
         # call circuit initialiser
         circuit_par, circuit_init_conds, circuit_genes, circuit_miscs, circuit_name2pos, circuit_styles = circuit_initialiser()
@@ -93,11 +94,19 @@ class CellModelAuxiliary:
 
         # IF stochastic component specified, predefine F_calc for it as well
         if (circuit_v != None):
-            circuit_v_with_F_calc = lambda t, x, e, l, R, k_het, D, p_prot, mRNA_count_scales, par, name2pos: circuit_v(
-                circuit_F_calc,
-                t, x, e, l, R, k_het, D, p_prot,
-                mRNA_count_scales,
-                par, name2pos)
+            if not varvol:
+                circuit_v_with_F_calc = lambda t, x, e, l, R, k_het, D, p_prot, mRNA_count_scales, par, name2pos, : circuit_v(
+                    circuit_F_calc,
+                    t, x, e, l, R, k_het, D, p_prot,
+                    mRNA_count_scales,
+                    par, name2pos)
+            else:
+                circuit_v_with_F_calc = lambda t, x, e, l, R, k_het, D, p_prot, mRNA_count_scales, par, name2pos, \
+                                               V, rep_vols: circuit_v(
+                    circuit_F_calc,
+                    t, x, e, l, R, k_het, D, p_prot,
+                    mRNA_count_scales,
+                    par, name2pos, V, rep_vols)
         else:
             circuit_v_with_F_calc = None
 
@@ -172,7 +181,7 @@ class CellModelAuxiliary:
         params['diff_h'] = 90.0 * 60  # chloramphenicol diffusion coefficient through the cell membrane (1/h)
         params['K_D'] = 1300.0  # chloramphenicol-ribosome dissociation constant (nM)
         params['K_C'] = (
-                                    1 / 3) / 60  # dissociation constant for chloramphenicol removal by the cat (chloramphenicol resistance) protein, if present (nM*h)
+                                1 / 3) / 60  # dissociation constant for chloramphenicol removal by the cat (chloramphenicol resistance) protein, if present (nM*h)
         params[
             'cat_gene_present'] = 0  # 1 if cat gene is present, 0 otherwise (will be automatically set to 1 if your circuit has a gene titled 'cat' and you haven't messed where you shouldn't)
         params['eff_h'] = 0.0  # chloramphenicol efflux rate due to membrane protein activity (1/h)
@@ -321,10 +330,12 @@ class CellModelAuxiliary:
                                    dimensions=(320, 180), tspan=None,
                                    varvol=False  # whether the simulation considers variable cell volumes
                                    ):
-        if(varvol):
-            Vs=xs[:,6]    # cell volumes
-            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)    # divide abundances by cell volumes to get concentrations
-            xs_concs[:, 6] = par['s']*np.ones_like(Vs)    # instead of volumes, x without variable volumes has nutrient quality in this position
+        if (varvol):
+            Vs = xs[:, 6]  # cell volumes
+            xs_concs = np.divide(xs, (Vs * np.ones_like(
+                np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(
+                Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
 
@@ -344,7 +355,8 @@ class CellModelAuxiliary:
             's': xs_concs[:, 6],  # nutrient quality
             'h': xs_concs[:, 7],  # chloramphenicol concentration
             'm_het': np.sum(xs_concs[:, 8:8 + len(circuit_genes)], axis=1),  # heterologous mRNA
-            'p_het': np.sum(xs_concs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=1),  # heterologous protein
+            'p_het': np.sum(xs_concs[:, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=1),
+            # heterologous protein
         })
 
         # PLOT mRNA CONCENTRATIONS
@@ -431,8 +443,10 @@ class CellModelAuxiliary:
         # turn molecule counts into concentrations if considering variable cell volumes
         if (varvol):
             Vs = xs[:, 6]  # cell volumes
-            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
-            xs_concs[:, 6] = par['s'] * np.ones_like(Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
+            xs_concs = np.divide(xs, (Vs * np.ones_like(
+                np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(
+                Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
 
@@ -528,13 +542,15 @@ class CellModelAuxiliary:
                                 # model parameters, list of circuit genes and miscellaneous species, and dictionary mapping gene names to their positions in the state vector
                                 circuit_styles,  # colours for the circuit plots
                                 dimensions=(320, 180), tspan=None,
-                                varvol = False  # whether the simulation considers variable cell volumes
+                                varvol=False  # whether the simulation considers variable cell volumes
                                 ):
         # if considering variable cell volumes, divide molecule counts by cell volume to get concentrations
         if (varvol):
             Vs = xs[:, 6]  # cell volumes
-            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
-            xs_concs[:, 6] = par['s'] * np.ones_like(Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
+            xs_concs = np.divide(xs, (Vs * np.ones_like(
+                np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs[:, 6] = par['s'] * np.ones_like(
+                Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
 
@@ -580,26 +596,28 @@ class CellModelAuxiliary:
     # plot physiological variables: growth rate, translation elongation rate, ribosomal gene transcription regulation function, ppGpp concentration, tRNA charging rate, RC denominator
     def plot_phys_variables(self, ts, xs,
                             par, circuit_genes, circuit_miscs, circuit_name2pos,
-                            circuit_eff_m_het_div_k_het,  # function calculating the effective total mRNA/k for all synthetic genes
+                            circuit_eff_m_het_div_k_het,
+                            # function calculating the effective total mRNA/k for all synthetic genes
                             dimensions=(320, 180), tspan=None,
                             varvol=False  # whether the simulation considers variable cell volumes
                             ):
         # if considering variable cell volumes, divide molecule counts by cell volume to get concentrations
         if (varvol):
             Vs = xs[:, 6]  # cell volumes
-            xs_concs = np.divide(xs, (Vs * np.ones_like(np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+            xs_concs = np.divide(xs, (Vs * np.ones_like(
+                np.array([xs[0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
             xs_concs[:, 6] = par['s'] * np.ones_like(
                 Vs)  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xs_concs = xs
-
 
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
 
         # get cell variables' values over time
-        e, l, F_r, nu, _, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xs_concs, par, circuit_genes, circuit_miscs,
+        e, l, F_r, nu, _, T, D, D_nodeg = self.get_e_l_Fr_nu_psi_T_D_Dnodeg(ts, xs_concs, par, circuit_genes,
+                                                                            circuit_miscs,
                                                                             circuit_name2pos,
                                                                             circuit_eff_m_het_div_k_het)
 
@@ -706,9 +724,9 @@ class CellModelAuxiliary:
 
     # plot cell volume over time
     def plot_volume(self, ts, xs,
-                 par, circuit_genes,  # model parameters, list of circuit genes
-                 dimensions=(320, 180), tspan=None,  # whether the simulation considers variable cell volumes
-                 ):
+                    par, circuit_genes,  # model parameters, list of circuit genes
+                    dimensions=(320, 180), tspan=None,  # whether the simulation considers variable cell volumes
+                    ):
         # set default time span if unspecified
         if (tspan == None):
             tspan = (ts[0], ts[-1])
@@ -729,7 +747,7 @@ class CellModelAuxiliary:
             tools="box_zoom,pan,hover,reset"
         )
         vol_figure.line(x='t', y='V', source=source, line_width=1.5, line_color='blue',
-                         legend_label='cell volume')  # plot metabolic mRNA concentrations
+                        legend_label='cell volume')  # plot metabolic mRNA concentrations
         vol_figure.legend.label_text_font_size = "8pt"
         vol_figure.legend.location = "top_right"
         vol_figure.legend.click_policy = 'hide'
@@ -829,12 +847,14 @@ class CellModelAuxiliary:
                                             ):
         # if considering variable cell volumes, divide heterologous molecule counts by cell volume
         if varvol:
-            xss_concs=np.zeros_like(xss)    # initialise
-            Vs=np.zeros_like(xss[:,:, 6])    # initialise
+            xss_concs = np.zeros_like(xss)  # initialise
+            Vs = np.zeros_like(xss[:, :, 6])  # initialise
             for i in range(0, len(xss)):
-                Vs[i,:]=xss[i,:,6]    # cell volumes
-                xss_concs[i,:,:] = np.divide(xss, (Vs[i,:] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
-                xss_concs[i, :, 6] = par['s'] * np.ones_like(Vs[i,:])  # instead of volumes, x without variable volumes has nutrient quality in this position
+                Vs[i, :] = xss[i, :, 6]  # cell volumes
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(
+                    np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, 6] = par['s'] * np.ones_like(
+                    Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
             xss_concs = xss
 
@@ -873,7 +893,8 @@ class CellModelAuxiliary:
             's': np.mean(xss_concs[:, :, 6], axis=0),  # nutrient quality
             'h': np.mean(xss_concs[:, :, 7], axis=0),  # chloramphenicol concentration
             'm_het': np.sum(np.mean(xss_concs[:, :, 8:8 + len(circuit_genes)], axis=0), axis=1),  # heterologous mRNA
-            'p_het': np.sum(np.mean(xss_concs[:, :, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=0), axis=1),
+            'p_het': np.sum(np.mean(xss_concs[:, :, 8 + len(circuit_genes):8 + len(circuit_genes) * 2], axis=0),
+                            axis=1),
             # heterologous protein
         })
 
@@ -1003,7 +1024,8 @@ class CellModelAuxiliary:
             Vs = np.zeros_like(xss[:, :, 6])  # initialise
             for i in range(0, len(xss)):
                 Vs[i, :] = xss[i, :, 6]  # cell volumes
-                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(
+                    np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
                 xss_concs[i, :, 6] = par['s'] * np.ones_like(
                     Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
@@ -1151,7 +1173,8 @@ class CellModelAuxiliary:
             Vs = np.zeros_like(xss[:, :, 6])  # initialise
             for i in range(0, len(xss)):
                 Vs[i, :] = xss[i, :, 6]  # cell volumes
-                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(
+                    np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
                 xss_concs[i, :, 6] = par['s'] * np.ones_like(
                     Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
@@ -1236,7 +1259,8 @@ class CellModelAuxiliary:
             Vs = np.zeros_like(xss[:, :, 6])  # initialise
             for i in range(0, len(xss)):
                 Vs[i, :] = xss[i, :, 6]  # cell volumes
-                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
+                xss_concs[i, :, :] = np.divide(xss, (Vs[i, :] * np.ones_like(
+                    np.array([xss[i, 0, :]]).T)).T)  # divide abundances by cell volumes to get concentrations
                 xss_concs[i, :, 6] = par['s'] * np.ones_like(
                     Vs[i, :])  # instead of volumes, x without variable volumes has nutrient quality in this position
         else:
@@ -2161,9 +2185,9 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
                        tf, tau, tau_odestep, tau_savetimestep,
                        # simulation parameters: time frame, tau-leap time step, number of ODE steps in each tau-leap step
                        mRNA_count_scales, S, circuit_synpos2genename, keys0,
-                       # parameter vectors for efficient simulation and reaction stoichiometry info - determined by tauleap_sim_prep!!
-                       avg_dynamics=False
-                       # true if considering the deterministic cas with average dynamics of random variables
+                       # parameter vectors for efficient simulation and reaction stoichiometry info - determined by tauleap_sim_prep_varvol!!
+                       rep_phase_means_stdevs_bounds,   # params for sampling the randomly distributed replication phase of chr. int. synth. genes - determined by tauleap_sim_prep_varvol!!
+                       avg_dynamics=False   # true if considering the deterministic cas with average dynamics of random variables
                        ):
     # define the arguments for finding the next state vector
     args = (
@@ -2171,7 +2195,9 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
         circuit_name2pos,  # gene name - position in circuit vector decoder
         num_circuit_genes, num_circuit_miscs,  # number of genes and miscellaneous species in the circuit
         sgp4j,  # relevant synthetic gene parameters in jax.array form
-        mRNA_count_scales, S, circuit_synpos2genename  # parameters for stochastic simulation
+        mRNA_count_scales, S, circuit_synpos2genename,  # parameters for stochastic simulation
+        rep_phase_means_stdevs_bounds
+    # parameters for sampling the randomly distributed replication phase of chr. int. synth. genes
     )
 
     # time points at which we save the solution
@@ -2182,8 +2208,8 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
 
     # make the retrieval of next x a lambda-function for jax.lax.scanning
     scan_step = lambda sim_state, t: tauleap_record_x_varvol(circuit_v, circuit_eff_m_het_div_k_het,
-                                                      sim_state, t, tau, ode_steps_in_tau,
-                                                      args)
+                                                             sim_state, t, tau, ode_steps_in_tau,
+                                                             args)
 
     # define the jac.lax.scan function
     tauleap_scan = lambda sim_state_rec0, ts: jax.lax.scan(scan_step, sim_state_rec0, ts)
@@ -2195,9 +2221,23 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
     else:  # otherwise, leave initial conditions as is
         x0s = x0
 
+    # get the initial replication volumes for chromosomally integrated synthetic genes
+    rep_phases0, key_after_phase_sampling0 = jax.vmap(lambda key: jax.lax.cond(avg_dynamics,
+                                                        # if we're considering the deterministic case with average dynamics
+                                                        # if considering average dynamics, just return the mean volume at which replication occurs
+                                                        lambda rep_phase_means_stdevs_bounds, key: (
+                                                        rep_phase_means_stdevs_bounds[0], key),
+                                                        # if considering average dynamics, call the random volume sampling function
+                                                        tauleap_division_random_phases,
+                                                        rep_phase_means_stdevs_bounds, key
+                                                        ),in_axes=(0,))(keys0)
+    rep_vols0 = (par['V_crit'] / 2) * jnp.exp(rep_phases0)  # calculate the volumes at which replication occurs
+
+
     # initalise the simulator state: (t, x, sim_step_cntr, record_step_cntr, key, tf, xs)
     sim_state_rec0 = {'t': tf[0], 'x': x0s,  # time, state vector
                       'key': keys0,  # random number generator key
+                      'rep_vols': rep_vols0,  # replication volumes
                       'tf': tf,  # overall simulation time frame
                       'save_every_n_steps': int(tau_savetimestep / tau),  # tau-leap steps between record points
                       'avg_dynamics': avg_dynamics
@@ -2207,6 +2247,7 @@ def tauleap_sim_varvol(par,  # dictionary with model parameters
     # vmapping - specify that we vmap over the random number generation keys
     sim_state_vmap_axes = {'t': None, 'x': 0,  # time, state vector
                            'key': 0,  # random number generator key
+                           'rep_vols': 0,  # replication volumes
                            'tf': None,  # overall simulation time frame
                            'save_every_n_steps': None,  # tau-leap steps between record points
                            'avg_dynamics': None
@@ -2237,12 +2278,13 @@ def tauleap_record_x_varvol(circuit_v,
         # update x
         # find deterministic change in x
         det_update = tauleap_integrate_ode_varvol(sim_state_tauleap['t'], sim_state_tauleap['x'], tau, ode_steps_in_tau,
-                                           circuit_eff_m_het_div_k_het,
-                                           args)
+                                                  circuit_eff_m_het_div_k_het,
+                                                  args)
         # find stochastic change in x
         stoch_update = tauleap_update_stochastically_varvol(sim_state_tauleap['t'], sim_state_tauleap['x'],
-                                                     tau, args, circuit_v,
-                                                     sim_state_tauleap['key'], sim_state_tauleap['avg_dynamics'])
+                                                            tau, args, circuit_v,
+                                                            sim_state_tauleap['rep_vols'],
+                                                            sim_state_tauleap['key'], sim_state_tauleap['avg_dynamics'])
         # update key after finding the stochastic update
         key_after_stoch_update, _ = jax.random.split(sim_state_tauleap['key'], 2)
 
@@ -2253,16 +2295,19 @@ def tauleap_record_x_varvol(circuit_v,
 
         # if the cell reaches a critical volume, handle cell division with random partitioning of hereologous species
         # note: system parameters is args[0]
-        next_x, next_key = jax.lax.cond(next_x_nonneg[6] >= args[0]['V_crit'],
+        next_x, next_rep_vols, next_key = jax.lax.cond(next_x_nonneg[6] >= args[0]['V_crit'],
                                         # check if cell volume exceeds the critical volume
                                         tauleap_division_varvol,  # if yes, call the division function
-                                        lambda x, par, key, avg_dynamics: (x, key),  # if no, just return the old state and key
-                                        next_x_nonneg, args[0], key_after_stoch_update, sim_state_tauleap['avg_dynamics'])  # arguments for the division function
+                                        lambda x, rep_vols, par, rep_phase_means_stdevs_bounds, key, avg_dynamics: (x, rep_vols, key),
+                                        # if no, just return the old state and key
+                                        next_x_nonneg, sim_state_tauleap['rep_vols'], args[0], args[8], key_after_stoch_update,
+                                        sim_state_tauleap['avg_dynamics'])  # arguments for the division function
 
         return {
             # entries updated over the course of the tau-leap step
             't': next_t, 'x': next_x,
             'key': next_key,
+            'rep_vols': next_rep_vols,
             # entries unchanged over the course of the tau-leap step
             'tf': sim_state_tauleap['tf'],
             'save_every_n_steps': sim_state_tauleap['save_every_n_steps'],
@@ -2279,6 +2324,7 @@ def tauleap_record_x_varvol(circuit_v,
         # entries updated over the course of the tau-leap step
         't': next_state_bytauleap['t'], 'x': next_state_bytauleap['x'],
         'key': next_state_bytauleap['key'],
+        'rep_vols': next_state_bytauleap['rep_vols'],
         # entries unchanged
         'tf': sim_state_record['tf'],
         'save_every_n_steps': sim_state_record['save_every_n_steps'],
@@ -2289,24 +2335,54 @@ def tauleap_record_x_varvol(circuit_v,
 
 
 # cell division
-def tauleap_division_varvol(x, par, key, avg_dynamics):
-    # in considering average dynamics, we just take the average of the heterologous species
-    x_with_partitioning = jax.lax.cond(avg_dynamics,  # if we're considering the deterministic case
-                                       # if considering average dynamics, just divide all abundances (as well as volume at x[6]) by two
-                                       lambda x, key: x/2,
-                                       # if considering average dynamics, divide native species' abundances (as well as volume at x[6]) by two
-                                       # and assume random partitioning of heterologous species according to binomial distribution
-                                       lambda x, key: jnp.concatenate((x[0:8]/2, jax.random.binomial(key, x[8:], 0.5))),
-                                       x, key)  # if we're considering the stochastic case, randomly partition heterologous species
-
-    # if random partitioning has been used, update the key
-    key_after_partitioning = jax.lax.cond(avg_dynamics,
-                                          lambda key: key,
-                                          lambda key: jax.random.split(key, 2)[0],
-                                          key)
+def tauleap_division_varvol(x, rep_vols,
+                            par, rep_phase_means_stdevs_bounds,
+                            key, avg_dynamics):
+    # get x with partitioning of species
+    x_with_partitioning, key_after_partitioning = jax.lax.cond(avg_dynamics,    # if we're considering the deterministic case with average dynamics
+                                                               # if considering average dynamics, just divide all abundances (as well as volume at x[6]) by two
+                                                               lambda x, key: (x / 2, key),
+                                                               # if considering average dynamics, call the random partitioning function
+                                                               tauleap_division_varvol_random_partition,
+                                                               x, key
+                                                               )
+    # get cellcycle phases at which chromosomally integrated synthetic genes will replicate
+    rep_phases, key_after_phase_sampling = jax.lax.cond(avg_dynamics,   # if we're considering the deterministic case with average dynamics
+                                                    # if considering average dynamics, just return the mean volume at which replication occurs
+                                                    lambda rep_phase_means_stdevs_bounds, key: (rep_phase_means_stdevs_bounds[0], key),
+                                                    # if considering average dynamics, call the random volume sampling function
+                                                    tauleap_division_random_phases,
+                                                    rep_phase_means_stdevs_bounds, key_after_partitioning
+                                                    )
+    rep_vols=(par['V_crit']/2)*jnp.exp(rep_phases)  # calculate the volumes at which replication occurs
 
     # return the state vector with new cell volume and partitioned heterologous species, as well as the new random number generation key
+    return x_with_partitioning, rep_vols, key_after_phase_sampling
+
+# at time of cell division, partition molecules of species between two daughter cells
+def tauleap_division_varvol_random_partition(x, key):
+    # sample the heterologous species' abundances from a binomial distribution with equal probability of partitioning to each daughter cell
+    x_with_partitioning = jnp.concatenate((x[0:8]/2, jax.random.binomial(key, x[8:], 0.5)))
+
+    #  update the key
+    key_after_partitioning,_ = jax.random.split(key, 2)
+
     return x_with_partitioning, key_after_partitioning
+
+
+# at time of cell division, sample the cell cycle phases at which replication of chr. int. synth. genes occurs
+def tauleap_division_random_phases(rep_phase_means_stdevs_bounds, key):
+    # sample the phases at which replication occurs
+    rep_phases = jax.random.truncated_normal(key,  # random number generator key
+                                             rep_phase_means_stdevs_bounds[2],  # lower bound
+                                             rep_phase_means_stdevs_bounds[3]  # upper bound
+                                             ) * rep_phase_means_stdevs_bounds[1] + rep_phase_means_stdevs_bounds[0]
+
+    # if random sampling has been used, update the key
+    key_after_volume_sampling, _ = jax.random.split(key, 2)
+
+    return rep_phases, key_after_volume_sampling
+
 
 # ode integration - Euler method
 def tauleap_integrate_ode_varvol(t, x, tau, ode_steps_in_tau,
@@ -2326,7 +2402,7 @@ def tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args):
 
     # GET THE STATE VECTOR WITH SPECIE CONCENTRATIONS (divide them by the cell volume)
     V = x[6]
-    x_concs=x/V
+    x_concs = x / V
 
     # give the state vector entries meaningful names
     m_a = x_concs[0]  # metabolic gene mRNA
@@ -2335,7 +2411,7 @@ def tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args):
     R = x_concs[3]  # non-inactivated ribosomes
     tc = x_concs[4]  # charged tRNAs
     tu = x_concs[5]  # uncharged tRNAs
-    s = par['s']    # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
+    s = par['s']  # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
     h = x_concs[7]  # INTERNAL chloramphenicol concentration (varies)
     # synthetic circuit genes and miscellaneous species can be accessed directly from x with circuit_name2pos
 
@@ -2391,29 +2467,30 @@ def tauleap_ode_varvol(t, x, circuit_eff_m_het_div_k_het, args):
     B_cont = R * (1 / H - 1 / D - jnp.sum(jnp.divide(x_concs[8:8 + num_circuit_genes], k_het)) / D)
 
     # return dx/dt for the host cell; CAREFUL: NO DILUTION TERM, AND dx/dt per 1um^3 IS MULTIPLED BY V
-    return V*jnp.array([
-                         # mRNAs
-                         l * par['c_a'] * par['a_a'] - par['b_a'] * m_a,
-                         l * Fr_calc(par, T) * par['c_r'] * par['a_r'] - par['b_r'] * m_r,
-                         # metabolic protein p_a
-                         (e / par['n_a']) * (m_a / k_a / D) * R,
-                         # ribosomes
-                         (e / par['n_r']) * (m_r / k_r / D) * R,
-                         # tRNAs
-                         nu * p_a - e * B_cont,
-                         l * psi - nu * p_a + e * B_cont,
-                         # volume increases at growth rate (mind that we multiply by V before jnp.array())
-                         l,
-                         # chloramphenicol concentration
-                         par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C']
-                     ] +
-                     [0] * (2 * num_circuit_genes) + [0] * num_circuit_miscs
-                     # synthetic gene expression considered stochastically
-                     )
+    return V * jnp.array([
+                             # mRNAs
+                             l * par['c_a'] * par['a_a'] - par['b_a'] * m_a,
+                             l * Fr_calc(par, T) * par['c_r'] * par['a_r'] - par['b_r'] * m_r,
+                             # metabolic protein p_a
+                             (e / par['n_a']) * (m_a / k_a / D) * R,
+                             # ribosomes
+                             (e / par['n_r']) * (m_r / k_r / D) * R,
+                             # tRNAs
+                             nu * p_a - e * B_cont,
+                             l * psi - nu * p_a + e * B_cont,
+                             # volume increases at growth rate (mind that we multiply by V before jnp.array())
+                             l,
+                             # chloramphenicol concentration
+                             par['diff_h'] * (par['h_ext'] - h) - h * p_cat / par['K_C']
+                         ] +
+                         [0] * (2 * num_circuit_genes) + [0] * num_circuit_miscs
+                         # synthetic gene expression considered stochastically
+                         )
 
 
 # stochastic update calculation
 def tauleap_update_stochastically_varvol(t, x, tau, args, circuit_v,
+                                         rep_vols,  # volumes at which chromosomally integrated synthetic genes replicate
                                          key, avg_dynamics):
     # PREPARATION
     # unpack the arguments
@@ -2438,7 +2515,7 @@ def tauleap_update_stochastically_varvol(t, x, tau, args, circuit_v,
     R = x_concs[3]  # non-inactivated ribosomes
     tc = x_concs[4]  # charged tRNAs
     tu = x_concs[5]  # uncharged tRNAs
-    s = par['s']    # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
+    s = par['s']  # CAREFUL: NUTRIENT QUALITY S IS A PARAMETER, ASSUMED CONSTANT
     h = x_concs[7]  # INTERNAL chloramphenicol concentration (varies)
     # synthetic circuit genes and miscellaneous species can be accessed directly from x_concs with circuit_name2pos
 
@@ -2497,7 +2574,9 @@ def tauleap_update_stochastically_varvol(t, x, tau, args, circuit_v,
                                     p_prot,  # synthetic protease concentration
                                     mRNA_count_scales,  # scaling factors for synthetic gene mRNA counts
                                     par,  # system parameters
-                                    circuit_name2pos
+                                    circuit_name2pos,    # gene name - position in circuit vector decoder
+                                    V, # cell volume
+                                    rep_vols    # volumes at which chromosomally integrated synthetic genes replicate
                                     ))
     # in the entire cell volume
     v = v_per_vol * V
@@ -2544,7 +2623,28 @@ def tauleap_sim_prep_varvol(par,  # dictionary with model parameters
     key_seeds_jnp = jnp.array(key_seeds)
     keys0 = jax.vmap(jax.random.PRNGKey)(key_seeds_jnp)
 
-    return mRNA_count_scales, S, x0_tauleap, circuit_synpos2genename, keys0
+    # RANDOMLY SAMPLED REPLICATION PHASES FOR CHROMOSOMALLY INTEGRATED SYNTHETIC GENES
+    # initialise lists of mean, st dev and bounds for sampling the replication phase
+    rep_phase_mean = []
+    rep_phase_stdev = []
+    rep_phase_bound_low = []
+    rep_phase_bound_high = []
+    for i in range(0, num_circuit_genes):
+        # if mean replication phase stated as -1, means the gene is NOT chromosomally integrated
+        if (par['mean_rep_phase_' + circuit_synpos2genename[i]] > 0):
+            rep_phase_mean.append(par['mean_rep_phase_' + circuit_synpos2genename[i]])
+            rep_phase_stdev.append(par['stdev_rep_phase_' + circuit_synpos2genename[i]])
+            rep_phase_bound_low.append((0 - par['mean_rep_phase_' + circuit_synpos2genename[i]]) / par[
+                'stdev_rep_phase_' + circuit_synpos2genename[i]])
+            rep_phase_bound_high.append((1 - par['mean_rep_phase_' + circuit_synpos2genename[i]]) / par[
+                'stdev_rep_phase_' + circuit_synpos2genename[i]])
+    # gather all the records together
+    rep_phase_means_stdevs_bounds = jnp.array([rep_phase_mean,
+                                               rep_phase_stdev,
+                                               rep_phase_bound_low,
+                                               rep_phase_bound_high])
+
+    return mRNA_count_scales, S, x0_tauleap, circuit_synpos2genename, keys0, rep_phase_means_stdevs_bounds
 
 
 # generate the stocihiometry matrix for heterologous genes (plus return total number of stochastic reactions) - DO NOT JIT
@@ -2562,9 +2662,9 @@ def gen_stoich_mat_varvol(par,
                                                2)  # synthesis/degradation/dilution of protein
     if ('cat_pb' in circuit_name2pos.keys()):  # plus, might need to model stochastic action of integrase
         num_stoch_reactions += 2  # functional CAT gene forward and reverse strain exchange, LR site-integrase dissociation due to conformation change and plasmid replication
-        num_stoch_reactions += 1 # LR site-integrase dissociation due to conformation change
-        num_stoch_reactions += 3 # replication of the plasmid with LR site-integrase complex, functional CAT gene or no CAT gene
-        num_stoch_reactions += 2 # synthesis and degradation of the replication inhibitor
+        num_stoch_reactions += 1  # LR site-integrase dissociation due to conformation change
+        num_stoch_reactions += 3  # replication of the plasmid with LR site-integrase complex, functional CAT gene or no CAT gene
+        num_stoch_reactions += 2  # synthesis and degradation of the replication inhibitor
 
     # initialise (in numpy format)
     S = np.zeros((8 + 2 * num_circuit_genes + num_circuit_miscs, num_stoch_reactions))
@@ -2606,7 +2706,8 @@ def gen_stoich_mat_varvol(par,
 
         # LR site-integrase dissociation due to plasmid replication
         S[8 + 2 * num_circuit_genes + 1, reaction_cntr] = -1  # cat_lri1 decreased
-        S[8 + 2 * num_circuit_genes + 2, reaction_cntr] = 2 # both the newly replicated plasmid and the old one are now CAt-less
+        S[
+            8 + 2 * num_circuit_genes + 2, reaction_cntr] = 2  # both the newly replicated plasmid and the old one are now CAt-less
         reaction_cntr += 1
 
         # replication of the plasmid with a functional CAT gene
@@ -2647,7 +2748,7 @@ def main():
         circuits.punisher_cnc_b_eff_m_het_div_k_het,
         par, init_conds,
         # propensity calculation function for hybrid simulations
-        circuits.punisher_cnc_b_v_varvol)
+        circuits.punisher_cnc_b_v_varvol, varvol=True)
 
     # BURDENSOME SYNTHETIC GENE
     par['c_b'] = 1
@@ -2682,10 +2783,16 @@ def main():
     par['K_inh'] = 214.05  # replication inhibition constant (nM)
 
     # critical cell volume triggering division
-    par['V_crit'] = 2.0*np.log(2)   # 2ln(2) so as to have an average volume of 1 um^3 assuming constant growth rate
+    par['V_crit'] = 2.0 * np.log(2)  # 2ln(2) so as to have an average volume of 1 um^3 assuming constant growth rate
+
+    # burdensome gene replication
+    par['mean_rep_phase_b'] = 0.5  # mean replication phase
+    par['stdev_rep_phase_b'] = 0.23  # standard deviation of replication phase (void as considering avergae dynamics for now)
+    c_b_scale = 1#(par['V_crit']/2) * np.log(2) * np.exp(par['mean_rep_phase_b']*np.log(2))
+    print(c_b_scale)
 
     # culture medium
-    nutr_qual=0.5
+    nutr_qual = 0.5
     par['s'] = nutr_qual  # nutrient quality (unitless)
     init_conds['s'] = nutr_qual  # nutrient quality (unitless)
 
@@ -2716,32 +2823,37 @@ def main():
 
     # HYBRID SIMULATION WITH VARIABLE CELL VOLUME
     # tau-leap hybrid simulation parameters
-    tf_hybrid = (tf[-1], tf[-1] + 0.28)  # simulation time frame
+    tf_hybrid = (tf[-1], tf[-1] + 0.6)  # simulation time frame
     tau = 1e-7  # simulation time step
     tau_odestep = 1e-7  # number of ODE integration steps in a single tau-leap step (smaller than tau)
     tau_savetimestep = 2e-2  # save time step a multiple of tau
 
     # simulate
     timer = time.time()
-    mRNA_count_scales, S, x0_tauleap, circuit_synpos2genename, keys0 = tauleap_sim_prep_varvol(par, len(circuit_genes),
-                                                                                        len(circuit_miscs),
-                                                                                        circuit_name2pos, det_steady_x,
-                                                                                        key_seeds=[0]
-                                                                                        )
-    x0_tauleap[6]=1.0 # start at the default volume of 1 um^3
+    mRNA_count_scales, S, x0_tauleap, circuit_synpos2genename, keys0, \
+        rep_phase_means_stdevs_bounds = tauleap_sim_prep_varvol(par, len(circuit_genes),
+                                                                len(circuit_miscs),
+                                                                circuit_name2pos,
+                                                                det_steady_x,
+                                                                key_seeds=[0]
+                                                                )
+    x0_tauleap[6] = 1.0  # start at the default volume of 1 um^3
+    par['a_b']=par['a_b']*c_b_scale
     ts_jnp, xs_jnp, final_keys = tauleap_sim_varvol(par,  # dictionary with model parameters
-                                             circuit_v,  # circuit reaction propensity calculator
-                                             circuit_eff_m_het_div_k_het,
-                                             x0_tauleap,
-                                             # initial condition VECTOR (processed to make sure random variables are appropriate integers)
-                                             len(circuit_genes), len(circuit_miscs), circuit_name2pos,
-                                             cellmodel_auxil.synth_gene_params_for_jax(par, circuit_genes),
-                                             # synthetic gene parameters for calculating k values
-                                             tf_hybrid, tau, tau_odestep, tau_savetimestep,
-                                             # simulation parameters: time frame, tau leap step size, number of ode integration steps in a single tau leap step
-                                             mRNA_count_scales, S, circuit_synpos2genename,
-                                             # mRNA count scaling factor, stoichiometry matrix, synthetic gene number in list of synth. genes to name decoder
-                                             keys0, avg_dynamics=True)  # starting random number genereation key
+                                                    circuit_v,  # circuit reaction propensity calculator
+                                                    circuit_eff_m_het_div_k_het,
+                                                    x0_tauleap,
+                                                    # initial condition VECTOR (processed to make sure random variables are appropriate integers)
+                                                    len(circuit_genes), len(circuit_miscs), circuit_name2pos,
+                                                    cellmodel_auxil.synth_gene_params_for_jax(par, circuit_genes),
+                                                    # synthetic gene parameters for calculating k values
+                                                    tf_hybrid, tau, tau_odestep, tau_savetimestep,
+                                                    # simulation parameters: time frame, tau leap step size, number of ode integration steps in a single tau leap step
+                                                    mRNA_count_scales, S, circuit_synpos2genename,
+                                                    # mRNA count scaling factor, stoichiometry matrix, synthetic gene number in list of synth. genes to name decoder
+                                                    keys0, # starting random number genereation keys
+                                                    rep_phase_means_stdevs_bounds,  # params for sampling the randomly distributed replication phase of chr. int. synth. genes - determined by tauleap_sim_prep_varvol!!
+                                                    avg_dynamics=False)
 
     # concatenate the results with the deterministic simulation
     ts = np.concatenate((ts, np.array(ts_jnp)))
@@ -2751,6 +2863,14 @@ def main():
                          axis=1)  # getting the results from all vmapped trajectories
 
     print('tau-leap simulation time: ', time.time() - timer)
+
+    # np.save('xs_first_fluct_varvol.npy', xs_first)
+    # np.save('ts_fluct_varvol.npy', ts)
+    # np.save('xss_fluct_varvol.npy', xss)
+
+    # xs_first=np.load('xs_first_fluct_varvol15.npy')
+    # ts=np.load('ts_fluct_varvol15.npy')
+    # xss=np.load('xss_fluct_varvol15.npy')
 
     # PLOT - HOST CELL MODEL
     bkplot.output_file(filename="cellmodel_sim.html",
@@ -2769,7 +2889,8 @@ def main():
                                                                                                            circuit_eff_m_het_div_k_het,
                                                                                                            tspan=tf_hybrid,
                                                                                                            varvol=True)  # plot simulation results
-    vol_figure = cellmodel_auxil.plot_volume(ts, xs_first, par, circuit_genes, tspan=tf_hybrid)  # plot simulation results
+    vol_figure = cellmodel_auxil.plot_volume(ts, xs_first, par, circuit_genes,
+                                             tspan=tf_hybrid)  # plot simulation results
     bkplot.save(bklayouts.grid([[nat_mrna_fig, nat_prot_fig, vol_figure],
                                 [nat_trna_fig, h_fig, l_figure],
                                 [e_figure, Fr_figure, D_figure]]))
@@ -2782,7 +2903,7 @@ def main():
                                                                                        circuit_miscs,
                                                                                        circuit_name2pos,
                                                                                        circuit_styles, tspan=tf_hybrid,
-                                                                                       varvol=True)  # plot simulation results
+                                                                                       varvol=False)  # plot simulation results
     F_fig = cellmodel_auxil.plot_circuit_regulation(ts, xs_first, circuit_F_calc, par, circuit_genes, circuit_miscs,
                                                     circuit_name2pos, circuit_styles, tspan=tf_hybrid,
                                                     varvol=True)  # plot simulation results

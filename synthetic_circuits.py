@@ -963,6 +963,7 @@ def punisher_cnc_b_initialise():
     for i in range(0, len(genes)):
         name2pos['m_' + genes[i]] = 8 + i  # mRNA
         name2pos['p_' + genes[i]] = 8 + len(genes) + i  # protein
+        name2pos['rep_vol_'+genes[i]] = -1 # by default, the gene is not chromosomal => position -1 assigned
     for i in range(0, len(miscs)):
         name2pos[miscs[i]] = 8 + len(genes) * 2 + i  # miscellaneous species
     for i in range(0, len(genes)):
@@ -984,6 +985,8 @@ def punisher_cnc_b_initialise():
         default_par['n_' + gene] = 300.0  # protein length (aa)
         default_par['d_' + gene] = 0.0  # rate of active protein degradation by synthetic protease - zero by default (/h/nM)
         default_par['g_' + gene] = 0.0  # synthetic protein's inteference with the cell's metabolic flux - zero by default (unitless)
+        default_par['mean_rep_phase_' + gene] = -1.0  # mean replication phase of the gene's plasmid - negative by default, meaning gene not chromosomal
+        default_par['stdev_rep_phase_' + gene] = 0.23  # standard deviation of the replication phase of the gene's plasmid - 0.23 from Walker et al., BMC Biology, 2016
 
     # special genes - must be handled in a particular way if not presemt
     # chloramphenicol acetlytransferase gene - antibiotic resistance
@@ -1040,6 +1043,11 @@ def punisher_cnc_b_initialise():
     default_par['b_inh'] = 74.976  # inhibitor degradation rate (1/h)
     default_par['n_inh'] = 10  # number of steps of replication initiation at which inhibition can happen
     default_par['K_inh'] = 214.05  # replication inhibition constant (nM)
+
+    # replication of the chromosomally integrated burdensome gene
+    default_par['mean_rep_phase_b'] = 0.5  # mean replication phase of the gene's plasmid
+    default_par['stdev_rep_phase_b'] = 0.23  # standard deviation of the replication phase of the gene's plasmid
+    name2pos['rep_vol_b']=0  # position of the volume of the plasmid carrying the burdensome gene in the replication volumes vector
 
     # -------- ...TO HERE
 
@@ -1104,7 +1112,7 @@ def punisher_cnc_b_ode(F_calc,     # calculating the transcription regulation fu
     # get the concentration of the integrase mRNA,scaled to account for translation by multiple ribosomes
     # same operon as the switch gene, but possibly not the same length in codons => rescaling m_switch
     m_int = x[name2pos['m_switch']]*par['n_int']/par['n_switch']
-    
+
     # get the total concentration of the plasmid with Punisher genes
     c_total = x[name2pos['cat_pb']] + x[name2pos['cat_lri1']] + x[name2pos['no_cat']]
     # get the plasmid replication rate
@@ -1149,7 +1157,9 @@ def punisher_cnc_b_v_varvol(F_calc,     # calculating the transcription regulati
             p_prot, # synthetic protease concentration
             mRNA_count_scales, # scaling factors for mRNA counts
             par,  # system parameters
-            name2pos
+            name2pos, # name to position decoder
+            V, # cell volume
+            rep_vols, # volumes at which chromosomally integrated synthetic genes are replicated
             ):
     # GET REGULATORY FUNCTION VALUES
     F = F_calc(t, x, par, name2pos)
@@ -1166,10 +1176,13 @@ def punisher_cnc_b_v_varvol(F_calc,     # calculating the transcription regulati
     # get the plasmid replication rate
     rep_rate = par['k_tr'] * (par['K_inh'] / (x[name2pos['inh']] + par['K_inh'])) ** par['n_inh']  # hyperbolic inhibition
 
+    # burdensome gene chromosomally integrated => handle its concentration separately
+    c_b=(1+(V>=rep_vols[name2pos['rep_vol_b']]))/V # one copy per cell, or two when replicated
+
     # RETURN THE PROPENSITIES
     return [
             # synthesis and degradation of burdensome synthetic gene mRNA
-            par['func_b'] * l * F[name2pos['F_b']] * par['c_b'] * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
+            par['func_b'] * l * F[name2pos['F_b']] * c_b * par['a_b'] / mRNA_count_scales[name2pos['mscale_b']],
             par['b_b'] * x[name2pos['m_b']] / mRNA_count_scales[name2pos['mscale_b']],
             # synthesis and degradation of switch gene mRNA
             par['func_switch'] * l * F[name2pos['F_switch']] * c_total * par['a_switch'] / mRNA_count_scales[name2pos['mscale_switch']],
