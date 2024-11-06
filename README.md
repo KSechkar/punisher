@@ -1,5 +1,5 @@
 # punisher
-Python code for used in the manuscript 'Model-guided gene circuit design for engineering genetically stable cell populations in diverse applications'. The article proposes a novel biomolecular controller for countring mutation spread, called 'the Punisher', and investigates its performance using a resource-aware coarse-grained _E. coli_ cell model first published in [Sechkar et al. 2024](https://www.nature.com/articles/s41467-024-46410-9) 
+Python code accompanying the manuscript 'Model-guided gene circuit design for engineering genetically stable cell populations in diverse applications' (Sechkar and Steel 2024, Journal of the Royal Society Interface). The article proposes a novel biomolecular controller for countring mutation spread, called 'the Punisher', and investigates its performance using a resource-aware coarse-grained _E. coli_ cell model first published in [Sechkar et al. 2024](https://www.nature.com/articles/s41467-024-46410-9) 
 
 ## File organisation
 The repository includes the following Python scripts:
@@ -14,6 +14,6 @@ The repository includes the following Python scripts:
 - _Fig7/varvol_find_scaling.ipynb_ - Jupyter notebook allowing to find a scaling factor for the synthetic burdensome gene's promoter strength to ensure consistency between the scenario considered in Figure S7 with the rest of the simulations. Namely, in Figure S7 the cell's volume changes over the course of the cell cycle and the burdensome gene is chromosomally integrated, being replicated at a user-defined cell cycle phase
 
 ## System requirements
-The code was run and ensured to be functional with Python 3.12 on PCs running on Windows 10 Pro 22H2, Windows 11 Home 22H2 and Ubuntu 20.04.6. All software requirements can be found in the file _requirements.txt_
+The code was run and ensured to be functional with Python 3.12 on PCs running on Windows 10 Pro 22H2, Windows 11 Home 22H2 and Ubuntu 20.04.6. The software requirements can be found in the file _requirements.txt_
 
-All scripts, except _FigS1.ipynb_, _varvol_find_scaling.ipynb_ and those in the _Make Pop Model_ folder, can be run on a normal PC CPU in under 30 minutes. We recommend that the longer-running scripts are run on a Linux PC with an NVIDIA GPU, which allows for the efficient parallel simulation of trajectories as part of the program.
+All scripts, except _FigS1.ipynb_, _FigS7.ipynb_, _FigS10.ipynb_, _varvol_find_scaling.ipynb_ and those in the _Make Pop Model_ folder, can be run on a normal PC CPU in under 30 minutes. We recommend that the longer-running scripts are run on a Linux PC with an NVIDIA GPU, which allows for the efficient parallel simulation of trajectories as part of the program.

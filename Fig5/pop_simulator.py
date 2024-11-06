@@ -180,71 +180,23 @@ class PopulationSimulator:
         # initialise the birth matrix
         brm=np.zeros((self.num_css,self.num_css))
 
-        # initialise the matrix of mutation probabilities
-        mrm=np.zeros((self.num_css,self.num_css))
+        # fill the matrix
+        for func_mother in self.cs2p.keys():
+            for state in self.cs2p[func_mother].keys():
+                # a cell with a given gene functionality divides into two cells with the same functionality
+                for func_daughter in self.cs2p.keys():
+                    chance_daughter_arising = 1 # start by assuming the possible daughter arises from the mother cell all the time
+                    for  i in range(0,len(func_mother)):    # go through all genes to consider their mutations
+                        if(func_mother[i]==0 and func_daughter[i]==1):
+                            chance_daughter_arising *= 0    # if the supposed daughter has a gene that the mother doesn't, the daughter cannot arise
+                        elif(func_mother[i]==1 and func_daughter[i]==0):
+                            chance_daughter_arising *= self.mutation_rates[i] # chance of a given gene mutating
+                        elif(func_mother[i]==1 and func_daughter[i]==1):
+                            chance_daughter_arising *= 1-self.mutation_rates[i] # chance of a given gene remaining unmutated
+                        # if both the mother and the daughter have a mutated gene copy, it always stays this way anyhow
 
-        # create a matrix of mutant progenies
-        mpm_immediate={} # immediate progeny (obtainable by a single mutation)
-        mpm={} # all progeny
-        for func_parent in self.cs2p.keys():
-            mpm_immediate[func_parent]=[]
-            mpm[func_parent]=[]
-            for func_child in self.cs2p.keys():
-                # check if the child is an immediate progeny or just a progeny
-                mutated_genes_in_child=0
-                same_or_progeny=True
-                for i in range(0,len(func_parent)):
-                    if(func_parent[i]==1 and func_child[i]==0):
-                        mutated_genes_in_child+=1
-                    elif((func_parent[i]==0 and func_child[i]==1)):
-                        same_or_progeny=False
-                        break
-                # make according entries in progeny lists
-                if(same_or_progeny and not mutated_genes_in_child==0):
-                    mpm[func_parent].append(func_child)
-                    if(mutated_genes_in_child==1):
-                        mpm_immediate[func_parent].append(func_child)
-
-        # calculate the mutation probabilities for each genetic and switch state
-        for func in self.cs2p.keys():
-            for state in self.cs2p[func].keys():
-                # travel down the matrix of mutation relations to find the ultimate child
-                parents=[func]
-                child_generation=0
-                progeny_by_generation=[[]]
-                while((0,0,0,0) not in parents):
-                    child_generation+=1
-                    progeny_by_generation.append([])
-                    # find the next generation of children
-                    for parent in parents:
-                        for child in mpm_immediate[parent]:
-                            if(child not in progeny_by_generation[child_generation]):
-                                progeny_by_generation[child_generation].append(child)
-                    # this generation's children will next be parents
-                    parents=progeny_by_generation[child_generation]
-                
-                # calculate the probability of mutating into each child
-                for generation in range(len(progeny_by_generation)-1,0,-1):
-                    for descendant in progeny_by_generation[generation]:
-                        # find probability of each mutation happening
-                        mutation_prob=1
-                        for i in range(0,len(func)):
-                            if(func[i]==1 and descendant[i]==0):
-                                mutation_prob*=self.mutation_rates[i]
-                        mrm[self.cs2p[descendant][state],self.cs2p[func][state]]=mutation_prob
-                        
-                        # subtract the probability of MORE mutations happening (i.e. the child mutating further into an mpm member)
-                        more_mutations_prob=0
-                        for descendants_progeny in mpm[descendant]:
-                            more_mutations_prob+=mutation_prob*mrm[self.cs2p[descendants_progeny][state],self.cs2p[descendant][state]]
-                        mrm[self.cs2p[descendant][state],self.cs2p[func][state]]-=more_mutations_prob
-
-                # according to mutation probabilities, calculate the birth rates
-                # new mutant children being born
-                for descendant in mpm[func]:
-                    brm[self.cs2p[descendant][state],self.cs2p[func][state]]=2*self.division_rates[func][state]*mrm[self.cs2p[descendant][state],self.cs2p[func][state]]
-                # unmutated cell being born
-                brm[self.cs2p[func][state],self.cs2p[func][state]]=2*self.division_rates[func][state]*(1-np.sum(mrm[:,self.cs2p[func][state]]))
+                    # define the birth rate matrix entry as the product of the chance of the daughter arising and the growth rate
+                    brm[self.cs2p[func_daughter][state],self.cs2p[func_mother][state]] = 2 * self.division_rates[func_mother][state] * chance_daughter_arising
 
         return brm
 
