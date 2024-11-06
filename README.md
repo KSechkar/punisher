@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/807035579.svg)](https://doi.org/10.5281/zenodo.14046987)
 # punisher
 Python code accompanying the manuscript 'Model-guided gene circuit design for engineering genetically stable cell populations in diverse applications' (Sechkar and Steel 2024, Journal of the Royal Society Interface). The article proposes a novel biomolecular controller for countring mutation spread, called 'the Punisher', and investigates its performance using a resource-aware coarse-grained _E. coli_ cell model first published in [Sechkar et al. 2024](https://www.nature.com/articles/s41467-024-46410-9) 
 
