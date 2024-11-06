@@ -11,7 +11,7 @@ The repository includes the following Python scripts:
 - _Fig5/pop_simulator.py_ - python implementation of the simulator of a population of cells hosting the Punisher circuit and one additional synthetic burdensome gene
 - _Fig5/Make Pop Model/XX.ipynb_ - Jupyter notebooks allowing to parameterise the cell population model described above using stochastic single-cell model simulations. Each notebook typically outputs the estimated mean switching time from one state of the Punisher circuit to another.
 - _Fig5/Make Pop Model/switching_time_estimation_tools.ipynb_ - auxiliary functions required to run the switching time estimation notebooks described above
-- _Fig7/varvol_find_scaling.ipynb_ - Jupyter notebook allowing to find a scaling factor for the synthetic burdensome gene's promoter strength to ensure consistency between the scenario considered in Figure S7 with the rest of the simulations. Namely, in Figure S7 the cell's volume changes over the course of the cell cycle and the burdensome gene is chromosomally integrated, being replicated at a user-defined cell cycle phase
+- _FigS7/varvol_find_scaling.ipynb_ - Jupyter notebook allowing to find a scaling factor for the synthetic burdensome gene's promoter strength to ensure consistency between the scenario considered in Figure S7 with the rest of the simulations. Namely, in Figure S7 the cell's volume changes over the course of the cell cycle and the burdensome gene is chromosomally integrated, being replicated at a user-defined cell cycle phase
 
 ## System requirements
 The code was run and ensured to be functional with Python 3.12 on PCs running on Windows 10 Pro 22H2, Windows 11 Home 22H2 and Ubuntu 20.04.6. The software requirements can be found in the file _requirements.txt_
